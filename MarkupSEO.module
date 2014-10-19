@@ -57,6 +57,11 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	 * Initializing the hooks
 	 *
 	 */
+	 public function init() {
+		 // frontend hooks
+		 $this->addHookAfter("ProcessPageView::execute", $this, 'hookMethodAuto');
+	 }
+	 
 	public function ready() {
 		// backend hooks
 		if(@$this->page->process == 'ProcessPageEdit') {
@@ -65,15 +70,17 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		}
 		
 		// frontend hooks
+		
 		if($this->method == 'auto' && $this->page->template != 'admin') {
 			$this->addHookProperty("Page::seo", $this, 'hookFrontendPage');
 			$this->addHookProperty("Config::seo", $this, 'hookFrontendConfig');
-			$this->addHookAfter("ProcessPageView::execute", $this, 'hookMethodAuto');
 		}
 	}
 	
 	
 	public function hookMethodAuto(HookEvent $event) {
+		if(!($this->method == 'auto' && $this->page->template != 'admin')) return;
+		
 		$dataRendered = $this->page->seo->render;
 		$event->return = str_ireplace("</head>", $dataRendered.'</head>', $event->return); 
 	}
