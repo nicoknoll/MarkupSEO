@@ -12,7 +12,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	public static function getModuleInfo() {
 		return array(
 			'title' => __('SEO'),
-			'version' => '0.1.2',
+			'version' => '0.2.0',
 			'summary' => __('The all-in-one SEO solution for ProcessWire.'),
 			'autoload' => true
 		);
@@ -57,14 +57,17 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	 * Initializing the hooks
 	 *
 	 */
-	public function init() {
-		$this->addHookAfter("ProcessPageEdit::buildFormContent", $this, 'addSEOTab');
-		$this->addHookBefore("ProcessPageEdit::execute", $this, 'saveSEOTab');
+	public function ready() {
+		// backend hooks
+		if(@$this->page->process == 'ProcessPageEdit') {
+			$this->addHookAfter("ProcessPageEdit::buildFormContent", $this, 'addSEOTab');
+			$this->addHookBefore("ProcessPageEdit::execute", $this, 'saveSEOTab');
+		}
 		
-		$this->addHookProperty("Page::seo", $this, 'hookFrontendPage');
-		$this->addHookProperty("Config::seo", $this, 'hookFrontendConfig');
-		
+		// frontend hooks
 		if($this->method == 'auto' && $this->page->template != 'admin') {
+			$this->addHookProperty("Page::seo", $this, 'hookFrontendPage');
+			$this->addHookProperty("Config::seo", $this, 'hookFrontendConfig');
 			$this->addHookAfter("ProcessPageView::execute", $this, 'hookMethodAuto');
 		}
 	}
@@ -85,9 +88,9 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$page = wire('pages')->get($this->config->input->get->id);
 		$pageData = $this->getPageSEO($page->id);
 		$configData = wire('modules')->getModuleConfigData($this);
-		$mixedData = array_merge((array)array_filter($configData), (array)array_filter($pageDataDefault));
+		$mixedData = array_merge(array_filter((array)$configData), array_filter((array)$pageData));
 		
-		
+		$this->modules->get('FieldtypeFieldsetTabOpen');
 		$field = new InputfieldFieldsetTabOpen;
 		$field->name = $this->prefix."meta";
 		$field->label = $this->_('SEO');
@@ -158,6 +161,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$e->return->add($field);
 		
 		
+		$this->modules->get('FieldtypeFieldsetClose');
 		$field = new InputfieldFieldsetClose;
 		$field->name = $this->prefix."meta_END";
 		
@@ -196,6 +200,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$moduleData['pages'][$id] = $data;
 		
 		wire('modules')->saveModuleConfigData($this, $moduleData);
+		
 	}
 	
 	/**
@@ -204,7 +209,20 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	 */
 	private function getPageSEO($id) {
 		$dataOrg = wire('modules')->getModuleConfigData($this);
-		return $dataOrg['pages'][$id];
+
+		if (isset($dataOrg['pages']) && isset($dataOrg['pages'][$id])) {
+		      return $dataOrg['pages'][$id];
+	   	} else {
+		       return array(
+		               'title' => '',
+		               'keywords' => '',
+		               'description' => '',
+		               'image' => '',
+		               'canonical' => '',
+		               'robots' => '',
+		               'custom' => '',
+		       );
+	   	}
 	}
 	
 	/**
@@ -271,7 +289,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$pageDataDefault = $this->getPageSEO($this->page->id);
 		$configData = wire('modules')->getModuleConfigData($this);
 		unset($configData['pages']);
-		$mixedData = array_merge((array)array_filter($configData), (array)array_filter($pageDataDefault));
+		$mixedData = array_merge(array_filter((array)$configData), array_filter((array)$pageDataDefault));
 		
 		
 		// add generator
@@ -280,12 +298,12 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		
 		// add opengraph
 		if($configData['includeOpenGraph']) {
-			$mixedData['og:site_name'] = $mixedData['sitename'];
-			$mixedData['og:title'] = $mixedData['title'];
-			$mixedData['og:url'] = (($mixedData['canonical']) ? $mixedData['canonical'] : $this->page->httpUrl);
-			$mixedData['og:description'] = $mixedData['description'];
-			$mixedData['og:type'] = $mixedData['website'];
-			$mixedData['og:image'] = $mixedData['image'];
+			$mixedData['og:site_name'] = @$mixedData['sitename'];
+			$mixedData['og:title'] = @$mixedData['title'];
+			$mixedData['og:url'] = ((@$mixedData['canonical']) ? $mixedData['canonical'] : $this->page->httpUrl);
+			$mixedData['og:description'] = @$mixedData['description'];
+			$mixedData['og:type'] = @$mixedData['website'];
+			$mixedData['og:image'] = @$mixedData['image'];
 		}
 		unset($mixedData['includeOpenGraph'], $mixedData['sitename']);
 		
@@ -297,7 +315,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			$rendered .= '<meta name="'.$name.'" content="'.$content.'">'."\n\r";
 		}
 		
-		$mixedData['render'] = $rendered.$mixedData['custom'];
+		$mixedData['render'] = $rendered.((@$mixedData['custom']) ? $mixedData['custom'] : '');
 		
 		$event->return = (object)$mixedData;
 	}
