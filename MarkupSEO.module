@@ -1,0 +1,452 @@
+<?php
+/**
+ * MarkupSEO
+ * The all-in-one SEO solution for ProcessWire.
+ *
+ * By Nico Knoll (http://nico.is/)
+ *
+ */
+
+class MarkupSEO extends WireData implements Module, ConfigurableModule {
+
+	public static function getModuleInfo() {
+		return array(
+			'title' => __('SEO'),
+			'version' => '0.1.1',
+			'summary' => __('The all-in-one SEO solution for ProcessWire.'),
+			'autoload' => true
+		);
+	}
+	
+	private $prefix = 'SEO_';
+
+
+	/**
+	 * Default configuration
+	 *
+	 */
+	static public function getDefaultConfig() {
+		return array(
+			'sitename' => '', 
+			'title' => '', 
+			'keywords' => '', 
+			'description' => '', 
+			'image' => '', 
+			'canonical' => '', 
+			'robots' => '', 
+			'custom' => '',
+			'includeGenerator' => 1,
+			'includeOpenGraph' => 1
+		);
+	}
+
+
+	/**
+	 * Populate default configuration (will be overwritten after constructor with user's own configuration)
+	 *
+	 */
+	public function __construct() {
+		foreach(self::getDefaultConfig() as $key => $value) {
+			$this->$key = $value;
+		}
+	}
+
+
+   	/**
+	 * Initializing the hooks
+	 *
+	 */
+	public function init() {
+		$this->addHookAfter("ProcessPageEdit::buildFormContent", $this, 'addSEOTab');
+		$this->addHookBefore("ProcessPageEdit::execute", $this, 'saveSEOTab');
+		
+		$this->addHookProperty("Page::seo", $this, 'hookFrontendPage');
+		$this->addHookProperty("Config::seo", $this, 'hookFrontendConfig');
+	}
+
+
+   	/**
+	 * Adds a new tab called "SEO" to pages
+	 *
+	 */
+	public function addSEOTab(HookEvent $e) {
+		// load data
+		$page = wire('pages')->get($this->config->input->get->id);
+		$pageData = $this->getPageSEO($page->id);
+		$configData = wire('modules')->getModuleConfigData($this);
+		$mixedData = array_merge((array)array_filter($configData), (array)array_filter($pageDataDefault));
+		
+		
+		$field = new InputfieldFieldsetTabOpen;
+		$field->name = $this->prefix."meta";
+		$field->label = $this->_('SEO');
+		
+		$e->return->add($field);
+		
+		
+		// title, keywords, description, image, canonical, robots, custom
+		
+		$field = $this->modules->get("InputfieldMarkup");
+		$field->label = $this->_("Google Preview");
+		$field->description = $this->_('Will be updated after save.');
+		$field->value = $this->getGooglePreview($pageData['title'], $page->httpUrl, $pageData['description']);
+		
+		$e->return->add($field);
+		
+		$field = $this->modules->get("InputfieldText");
+		$field->name = $this->prefix."title";
+		$field->label = $this->_("Title");
+		$field->description = "";
+		$field->value = $pageData['title'];
+
+		$e->return->add($field);
+		
+		
+		$field = $this->modules->get("InputfieldText");
+		$field->name = $this->prefix."keywords";
+		$field->label = $this->_("Keywords");
+		$field->description = "";
+		$field->value = $pageData['keywords'];
+		
+		$e->return->add($field);
+		
+		
+		$field = $this->modules->get("InputfieldText");
+		$field->name = $this->prefix."description";
+		$field->label = $this->_("Description");
+		$field->description = "A good length for a description is 140 charakters.";
+		$field->value = $pageData['description'];
+		
+		$e->return->add($field);
+		
+		
+		$field = $this->modules->get("InputfieldText");
+		$field->name = $this->prefix."image";
+		$field->label = $this->_("Image");
+		$field->description = $this->_("Please enter the url to a preview image.");
+		$field->value = $pageData['image'];
+		
+		$e->return->add($field);
+		
+		
+		$field = $this->modules->get("InputfieldText");
+		$field->name = $this->prefix."canonical";
+		$field->label = $this->_("Canonical Link");
+		$field->description = "";
+		$field->value = $pageData['canonical'];
+		
+		$e->return->add($field);
+		
+		
+		$field = $this->modules->get("InputfieldTextarea");
+		$field->name = $this->prefix."custom";
+		$field->label = $this->_("Custom");
+		$field->description = $this->_("If you need additional Meta tags just add them here.");
+		$field->value = $pageData['custom'];
+		
+		$e->return->add($field);
+		
+		
+		$field = new InputfieldFieldsetClose;
+		$field->name = $this->prefix."meta_END";
+		
+		$e->return->add($field);
+	}
+
+	/**
+	 * Because the fields are not real fields they need to be saved in another way
+	 *
+	 */
+	public function saveSEOTab(HookEvent $e) {
+		if(!count($_POST)) return;
+		
+		$post = $this->config->input->post;
+		$pageSEOData = array(
+			 'title' => $post->{$this->prefix.'title'}, 
+			 'keywords' => $post->{$this->prefix.'keywords'}, 
+			 'description' => $post->{$this->prefix.'description'}, 
+			 'image' => $post->{$this->prefix.'image'}, 
+			 'canonical' => $post->{$this->prefix.'canonical'}, 
+			 'robots' => $post->{$this->prefix.'robots'}, 
+			 'custom' => $post->{$this->prefix.'custom'}
+		);
+
+		// TODO: find a better way to get the id
+		$this->savePageSEO($this->config->input->get->id, $pageSEOData);
+	}
+	
+	/**
+	 * Saves the data for one page
+	 *
+	 */
+	private function savePageSEO($id, $data) {
+		$moduleData = wire('modules')->getModuleConfigData($this);
+		
+		$moduleData['pages'][$id] = $data;
+		
+		wire('modules')->saveModuleConfigData($this, $moduleData);
+	}
+	
+	/**
+	 * Loads and returns the data for one page
+	 *
+	 */
+	private function getPageSEO($id) {
+		$dataOrg = wire('modules')->getModuleConfigData($this);
+		return $dataOrg['pages'][$id];
+	}
+	
+	/**
+	 * Generates a google styled preview for the SEO Tab
+	 *
+	 */
+	private function getGooglePreview($title, $url, $description) {
+		$html  = '<div class="SEO_google_wrapper"><span class="SEO_google_title">'.($title ? $title : 'Title').'</span>';
+		$html .= '<span class="SEO_google_link">'.($url ? $url : 'URL').'</span>';
+		$html .= '<span class="SEO_google_description">'.($description ? substr($description, 0, 155) : 'Description').'.</span></div>';
+		$html .= '<style>
+					.SEO_google_wrapper {
+						float:left;
+						margin:10px 0px;
+					}
+					
+					.SEO_google_title {
+						color: #1a0dab;
+						clear:both;
+						width:512px;
+						float:left;
+						font-family: arial,sans-serif;
+					}
+					
+					.SEO_google_link {
+						height: 17px;
+						line-height: 16px;
+						color: #006621;
+						font-style: normal;
+						font-size:13px;
+						clear:both;
+						width:512px;
+						float:left;
+						font-family: arial,sans-serif;
+					}
+					
+					.SEO_google_description {
+						line-height: 16px;
+						color: #545454;
+						font-style: normal;
+						font-size:13px;
+						clear:both;
+						width:512px;
+						float:left;
+						font-family: arial,sans-serif;
+					}
+		</style>';
+		
+		return $html;
+	}
+	
+	
+	
+	
+	/* ---- FRONTEND ---- */
+	
+	
+	
+	/**
+	 * Returns an object including all the data (mixed config and page)
+	 *
+	 */
+	public function hookFrontendPage(HookEvent $event) {
+		$pageDataDefault = $this->getPageSEO($this->page->id);
+		$configData = wire('modules')->getModuleConfigData($this);
+		unset($configData['pages']);
+		$mixedData = array_merge((array)array_filter($configData), (array)array_filter($pageDataDefault));
+		
+		
+		// add generator
+		if($mixedData['includeGenerator']) $mixedData['generator'] = 'ProcessWire '.$this->config->version;
+		unset($mixedData['includeGenerator']);
+		
+		// add opengraph
+		if($configData['includeOpenGraph']) {
+			$mixedData['og:site_name'] = $mixedData['sitename'];
+			$mixedData['og:title'] = $mixedData['title'];
+			$mixedData['og:url'] = (($mixedData['canonical']) ? $mixedData['canonical'] : $this->page->httpUrl);
+			$mixedData['og:description'] = $mixedData['description'];
+			$mixedData['og:type'] = $mixedData['website'];
+			$mixedData['og:image'] = $mixedData['image'];
+		}
+		unset($mixedData['includeOpenGraph'], $mixedData['sitename']);
+		
+		
+		// add "render"
+		$rendered = '';
+		foreach($mixedData as $name => $content) {
+			if($name == 'robots') $content = implode(', ', $content);
+			$rendered .= '<meta name="'.$name.'" content="'.$content.'">'."\n\r";
+		}
+		
+		$mixedData['render'] = $rendered.$mixedData['custom'];
+		
+		$event->return = (object)$mixedData;
+	}
+	
+	
+	
+	
+	
+	/**
+	 * Returns an object including all the data (only config/defaults)
+	 *
+	 */
+	public function hookFrontendConfig(HookEvent $event) {
+		$moduleData = wire('modules')->getModuleConfigData($this);
+		unset($moduleData['pages']);
+		
+		$event->return = (object)$moduleData;
+	}
+	
+	
+
+
+	/**
+	 * Create the modules setting page
+	 *
+	 */
+	static public function getModuleConfigInputfields(array $data) {
+
+		$prefix = 'SEO_';
+
+		// this is a container for fields, basically like a fieldset
+		$fields = new InputfieldWrapper();
+
+		// since this is a static function, we can't use $this->modules, so get them from the global wire() function
+		$modules = wire('modules');
+
+		// merge default config settings (custom values overwrite defaults)
+		$defaults = self::getDefaultConfig();
+		$data = array_merge($defaults, $data);
+		
+		
+		
+		$field = $modules->get("InputfieldText");
+		$field->name = "sitename";
+		$field->label = $this->_("Site Name");
+		$field->description = "";
+		$field->value = $data['sitename'];
+		
+		$fields->add($field);
+		
+		
+		$field = $modules->get("InputfieldText");
+		$field->name = "title";
+		$field->label = $this->_("Title");
+		$field->description = "";
+		$field->value = $data['title'];
+		
+		$fields->add($field);
+		
+		
+		$field = $modules->get("InputfieldText");
+		$field->name = "keywords";
+		$field->label = $this->_("Keywords");
+		$field->description = "";
+		$field->value = $data['keywords'];
+		
+		$fields->add($field);
+		
+		
+		$field = $modules->get("InputfieldText");
+		$field->name = "description";
+		$field->label = $this->_("Description");
+		$field->description = "";
+		$field->value = $data['description'];
+		
+		$fields->add($field);
+		
+		
+		$field = $modules->get("InputfieldText");
+		$field->name = "image";
+		$field->label = $this->_("Image");
+		$field->description = "";
+		$field->value = $data['image'];
+		
+		$fields->add($field);
+		
+		
+		$field = $modules->get("InputfieldText");
+		$field->name = "canonical";
+		$field->label = $this->_("Canonical");
+		$field->description = "";
+		$field->value = $data['canonical'];
+		
+		$fields->add($field);
+		
+		
+		$field = $modules->get("InputfieldTextarea");
+		$field->name = "custom";
+		$field->label = $this->_("Custom");
+		$field->description = "";
+		$field->value = $data['custom'];
+		
+		$fields->add($field);
+		
+		
+		
+		$field = $modules->get("InputfieldAsmSelect");
+		$field->name = "robots";
+		$field->label = $this->_("Robots");
+		$field->description = "";
+		$field->addOption('index');
+		$field->addOption('follow');
+		$field->addOption('archive');
+		$field->addOption('noindex');
+		$field->addOption('nofollow');
+		$field->addOption('noarchive');
+		$field->addOption('nosnippet');
+		$field->addOption('noodp');
+		$field->addOption('noydir');
+		$field->value = $data['robots'];
+		
+		$fields->add($field);
+		
+		
+		
+		
+		$field = $modules->get("InputfieldCheckbox");
+		$field->name = "includeGenerator";
+		$field->label = $this->_("Include Generator?");
+		$field->description = "";
+		$field->checked = $data['includeGenerator'];
+		
+		$fields->add($field);
+		
+		$field = $modules->get("InputfieldCheckbox");
+		$field->name = "includeOpenGraph";
+		$field->label = $this->_("Include Open Graph?");
+		$field->description = "";
+		$field->checked = $data['includeOpenGraph'];
+		
+		$fields->add($field);
+		
+
+		
+		$field = $modules->get("InputfieldMarkup");
+		$field->label = $this->_("Recommendations");
+		$string = $this->_('For an even better SEO experience there are a couple of other modules I can recommend:');
+		$field->value = '<p>'.$string.'</p>
+						<ul>
+							<li><a target="_blank" href="http://modules.processwire.com/modules/markup-sitemap-xml/">Sitemap</a> (MarkupSitemapXML)</li>
+							<li><a target="_blank" href="http://modules.processwire.com/modules/page-path-history/">Page Path History</a> (PagePathHistory)</li>
+							<li><a target="_blank" href="http://modules.processwire.com/modules/search-engine-referrer-tracker/">Search Engine Referrer Tracker</a> (SearchEngineReferrerTracker)</li>
+							<li><a target="_blank" href="http://modules.processwire.com/modules/process-redirects/">Redirects</a> (ProcessRedirects)</li>
+						</ul>';
+		
+		$fields->add($field);
+		
+		
+		
+
+		return $fields;
+	}
+}
