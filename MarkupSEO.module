@@ -12,7 +12,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	public static function getModuleInfo() {
 		return array(
 			'title' => __('SEO'),
-			'version' => '0.1.1',
+			'version' => '0.1.2',
 			'summary' => __('The all-in-one SEO solution for ProcessWire.'),
 			'autoload' => true
 		);
@@ -36,7 +36,8 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			'robots' => '', 
 			'custom' => '',
 			'includeGenerator' => 1,
-			'includeOpenGraph' => 1
+			'includeOpenGraph' => 1,
+			'method' => 'auto'
 		);
 	}
 
@@ -62,8 +63,18 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		
 		$this->addHookProperty("Page::seo", $this, 'hookFrontendPage');
 		$this->addHookProperty("Config::seo", $this, 'hookFrontendConfig');
+		
+		if($this->method == 'auto' && $this->page->template != 'admin') {
+			$this->addHookAfter("ProcessPageView::execute", $this, 'hookMethodAuto');
+		}
 	}
-
+	
+	
+	public function hookMethodAuto(HookEvent $event) {
+		$dataRendered = $this->page->seo->render;
+		$event->return = str_ireplace("</head>", $dataRendered.'</head>', $event->return); 
+	}
+	
 
    	/**
 	 * Adds a new tab called "SEO" to pages
@@ -331,7 +342,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		
 		$field = $modules->get("InputfieldText");
 		$field->name = "sitename";
-		$field->label = $this->_("Site Name");
+		$field->label = __("Site Name");
 		$field->description = "";
 		$field->value = $data['sitename'];
 		
@@ -340,7 +351,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		
 		$field = $modules->get("InputfieldText");
 		$field->name = "title";
-		$field->label = $this->_("Title");
+		$field->label = __("Title");
 		$field->description = "";
 		$field->value = $data['title'];
 		
@@ -349,7 +360,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		
 		$field = $modules->get("InputfieldText");
 		$field->name = "keywords";
-		$field->label = $this->_("Keywords");
+		$field->label = __("Keywords");
 		$field->description = "";
 		$field->value = $data['keywords'];
 		
@@ -358,7 +369,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		
 		$field = $modules->get("InputfieldText");
 		$field->name = "description";
-		$field->label = $this->_("Description");
+		$field->label = __("Description");
 		$field->description = "";
 		$field->value = $data['description'];
 		
@@ -367,7 +378,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		
 		$field = $modules->get("InputfieldText");
 		$field->name = "image";
-		$field->label = $this->_("Image");
+		$field->label = __("Image");
 		$field->description = "";
 		$field->value = $data['image'];
 		
@@ -376,7 +387,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		
 		$field = $modules->get("InputfieldText");
 		$field->name = "canonical";
-		$field->label = $this->_("Canonical");
+		$field->label = __("Canonical");
 		$field->description = "";
 		$field->value = $data['canonical'];
 		
@@ -385,7 +396,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		
 		$field = $modules->get("InputfieldTextarea");
 		$field->name = "custom";
-		$field->label = $this->_("Custom");
+		$field->label = __("Custom");
 		$field->description = "";
 		$field->value = $data['custom'];
 		
@@ -395,7 +406,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		
 		$field = $modules->get("InputfieldAsmSelect");
 		$field->name = "robots";
-		$field->label = $this->_("Robots");
+		$field->label = __("Robots");
 		$field->description = "";
 		$field->addOption('index');
 		$field->addOption('follow');
@@ -412,10 +423,9 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		
 		
 		
-		
 		$field = $modules->get("InputfieldCheckbox");
 		$field->name = "includeGenerator";
-		$field->label = $this->_("Include Generator?");
+		$field->label = __("Include Generator?");
 		$field->description = "";
 		$field->checked = $data['includeGenerator'];
 		
@@ -423,17 +433,30 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		
 		$field = $modules->get("InputfieldCheckbox");
 		$field->name = "includeOpenGraph";
-		$field->label = $this->_("Include Open Graph?");
+		$field->label = __("Include Open Graph?");
 		$field->description = "";
 		$field->checked = $data['includeOpenGraph'];
 		
 		$fields->add($field);
 		
+		
+		
+		$field = $modules->get("InputfieldRadios");
+		$field->name = "method";
+		$field->label = __("Method");
+		$field->description = "Do you want to get the generated code included automatically or use hooks in your template files?";
+		$field->addOption('auto', __('Automatically'));
+		$field->addOption('manual', __('Manually'));
+		$field->value = $data['method'];
+		
+		$fields->add($field);
+		
+		
 
 		
 		$field = $modules->get("InputfieldMarkup");
-		$field->label = $this->_("Recommendations");
-		$string = $this->_('For an even better SEO experience there are a couple of other modules I can recommend:');
+		$field->label = __("Recommendations");
+		$string = __('For an even better SEO experience there are a couple of other modules I can recommend:');
 		$field->value = '<p>'.$string.'</p>
 						<ul>
 							<li><a target="_blank" href="http://modules.processwire.com/modules/markup-sitemap-xml/">Sitemap</a> (MarkupSitemapXML)</li>
@@ -445,8 +468,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$fields->add($field);
 		
 		
-		
-
+	
 		return $fields;
 	}
 }
