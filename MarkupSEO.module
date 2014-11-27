@@ -591,7 +591,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	
 		$field = $modules->get("InputfieldText");
 		$field->name = "googleAnalytics";
-		$field->label = __("Gogole Analytics Code");
+		$field->label = __("Google Analytics Code");
 		$field->description = "Google Analytics code will be embedded if this field is populated.";
 		$field->notes = 'How to find your code: https://support.google.com/analytics/answer/1008080. It should look like: UA-XXXXXXX-X.';
 		$field->value = $data['googleAnalytics'];
