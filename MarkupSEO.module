@@ -79,8 +79,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		}
 		
 		// frontend hooks
-		
-		if($this->method == 'auto' && $this->page->template != 'admin') {
+		if($this->page->template != 'admin') {
 			$this->addHookProperty("Page::seo", $this, 'hookFrontendPage');
 			$this->addHookProperty("Config::seo", $this, 'hookFrontendConfig');
 		}
@@ -369,8 +368,10 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		// add "render"
 		$rendered = '';
 		foreach(array_filter($mixedData) as $name => $content) {
+			if($name == 'custom') continue;
 			if($name == 'robots') $content = implode(', ', $content);
-			$rendered .= '<meta name="'.$name.'" content="'.$content.'">'."\n\r";
+			if($name == 'title') $rendered .= '<title>'.$content.'</title>'."\r\n";
+			else $rendered .= '<meta name="'.$name.'" content="'.$content.'">'."\r\n";
 		}
 		
 		$mixedData['render'] = $rendered.((@$mixedData['custom']) ? $mixedData['custom'] : '').$googleAnalytics."\n\r";
