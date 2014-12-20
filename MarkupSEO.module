@@ -79,8 +79,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		}
 		
 		// frontend hooks
-		
-		if($this->method == 'auto' && $this->page->template != 'admin') {
+		if($this->page->template != 'admin') {
 			$this->addHookProperty("Page::seo", $this, 'hookFrontendPage');
 			$this->addHookProperty("Config::seo", $this, 'hookFrontendConfig');
 		}
@@ -323,7 +322,8 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		if($this->descriptionSmart && $pageDataDefault['description'] == '' && $this->page->get(implode('|', $this->descriptionSmart)) != '') $mixedData['description'] = $this->page->get(implode('|', $this->descriptionSmart));
 		if($mixedData['description'] == '' && $this->useParents && $this->page->id != '1') $mixedData['description'] = $this->getParentValue($this->page, 'description');
 
-		if($this->imageSmart && $pageDataDefault['image'] == '' && @$this->page->get(implode('|', $this->imageSmart))->first()->url != '') $mixedData['image'] = $this->page->get(implode('|', $this->imageSmart))->first()->url;
+		if($this->imageSmart && $pageDataDefault['image'] == '' && count($this->page->get(implode('|', $this->imageSmart))) > 0)
+			if($this->page->get(implode('|', $this->imageSmart)->first()->url != '')) $mixedData['image'] = $this->page->get(implode('|', $this->imageSmart))->first()->url;
 
 		unset($mixedData['titleSmart'], $mixedData['keywordsSmart'], $mixedData['descriptionSmart'], $mixedData['imageSmart']);
 		
@@ -369,8 +369,10 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		// add "render"
 		$rendered = '';
 		foreach(array_filter($mixedData) as $name => $content) {
+			if($name == 'custom') continue;
 			if($name == 'robots') $content = implode(', ', $content);
-			$rendered .= '<meta name="'.$name.'" content="'.$content.'">'."\n\r";
+			if($name == 'title') $rendered .= '<title>'.$content.'</title>'."\r\n";
+			else $rendered .= '<meta name="'.$name.'" content="'.$content.'">'."\r\n";
 		}
 		
 		$mixedData['render'] = $rendered.((@$mixedData['custom']) ? $mixedData['custom'] : '').$googleAnalytics."\n\r";
