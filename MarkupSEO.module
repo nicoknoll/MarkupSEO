@@ -12,13 +12,12 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	public static function getModuleInfo() {
 		return array(
 			'title' => __('SEO'),
-			'version' => '0.3.0',
+			'version' => '0.5.0',
 			'summary' => __('The all-in-one SEO solution for ProcessWire.'),
-			'autoload' => true
+			'autoload' => true,
+			'requires' => array('ProcessWire>=2.4.0', 'PHP>=5.3.8')
 		);
 	}
-	
-	private $prefix = 'SEO_';
 
 
 	/**
@@ -27,25 +26,42 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	 */
 	static public function getDefaultConfig() {
 		return array(
-			'sitename' => '', 
-			'title' => '', 
-			'titleSmart' => '', 
-			'keywords' => '', 
-			'keywordsSmart' => '', 
-			'description' => '', 
-			'descriptionSmart' => '', 
-			'image' => '', 
-			'imageSmart' => '', 
-			'canonical' => '', 
-			'robots' => '', 
-			'custom' => '',
-			'includeGenerator' => 1,
-			'includeOpenGraph' => 1,
-			'useParents' => 0,
-			'method' => 'auto',
-			'excludedTemplates' => 'admin',
-			'usePermission' => 0,
-			'googleAnalytics' => ''
+			'sitename' 			=> '', 
+			'author' 			=> '', 
+			'title' 				=> '', 
+			'titleSmart' 		=> 'title', 
+			'keywords' 			=> '', 
+			'keywordsSmart' 		=> '', 
+			'description' 		=> '', 
+			'descriptionSmart' 	=> '', 
+			'image' 				=> '', 
+			'imageSmart' 		=> '',
+			'titleFormat' 		=> '{title} - {sitename}', 
+			'canonical' 			=> '', 
+			'robots' 			=> '', 
+			'custom' 			=> '',
+			'includeGenerator' 	=> 1,
+			'includeOpenGraph' 	=> 1,
+			'includeTwitter' 	=> 1,
+			'twitterUsername' 	=> '',
+			'useParents' 		=> 0,
+			'method' 			=> 'auto',
+			'includeTemplates' 	=> '',
+			'usePermission' 		=> 0,
+			'googleAnalytics' 	=> ''
+		);
+	}
+	
+	static public function getDefaultFields() {
+		return array(
+			'seo_tab',
+			'seo_title',
+			'seo_keywords',
+			'seo_description',
+			'seo_image',
+			'seo_custom',
+			'seo_canonical',
+			'seo_tab_END'
 		);
 	}
 
@@ -73,173 +89,44 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	public function ready() {
 		// backend hooks
 		$editedPage = wire('pages')->get($this->config->input->get->id);
-		if(@$this->page->process == 'ProcessPageEdit' && !in_array((string)$editedPage->template, $this->excludedTemplates)) {
-			$this->addHookAfter("ProcessPageEdit::buildFormContent", $this, 'addSEOTab');
-			$this->addHookBefore("ProcessPageEdit::execute", $this, 'saveSEOTab');
+		if(@$this->page->process == 'ProcessPageEdit' && in_array($editedPage->template->name, $this->includeTemplates)) {
+			$this->addHookAfter("ProcessPageEdit::buildFormContent", $this, 'hookCustomizeSeoTab');
 		}
 		
 		// frontend hooks
-		
-		if($this->method == 'auto' && $this->page->template != 'admin') {
+		if($this->page->template != 'admin' && in_array($this->page->template->name, $this->includeTemplates)) {
 			$this->addHookProperty("Page::seo", $this, 'hookFrontendPage');
 			$this->addHookProperty("Config::seo", $this, 'hookFrontendConfig');
 		}
 	}
 	
-	
+	/**
+	 * The hooking functions
+	 *
+	 */
 	public function hookMethodAuto(HookEvent $event) {
-		if(!($this->method == 'auto' && $this->page->template != 'admin')) return;
+		if($this->method != 'auto' || $this->page->template == 'admin' || !in_array($this->page->template->name, $this->includeTemplates)) return;
 		
+		// inject rendered meta tags into page
 		$dataRendered = $this->page->seo->render;
 		$event->return = str_ireplace("</head>", $dataRendered.'</head>', $event->return); 
 	}
 	
 
-   	/**
-	 * Adds a new tab called "SEO" to pages
-	 *
-	 */
-	public function addSEOTab(HookEvent $e) {
-		// load data
+	public function hookCustomizeSeoTab(HookEvent $e) {
 		$page = wire('pages')->get($this->config->input->get->id);
-		$pageData = $this->getPageSEO($page->id);
-		$configData = wire('modules')->getModuleConfigData($this);
-		$mixedData = array_merge(array_filter((array)$configData), array_filter((array)$pageData));
 		
-		$this->modules->get('FieldtypeFieldsetTabOpen');
-		$field = new InputfieldFieldsetTabOpen;
-		$field->name = $this->prefix."meta";
-		$field->label = $this->_('SEO');
+		if(!$e->return->get('seo_tab')) return;
 		
-		$e->return->add($field);
-		
-		
-		// title, keywords, description, image, canonical, robots, custom
-		
+		// Add google preview
 		$field = $this->modules->get("InputfieldMarkup");
 		$field->label = $this->_("Google Preview");
 		$field->description = $this->_('Will be updated after save.');
-		$field->value = $this->getGooglePreview($pageData['title'], $page->httpUrl, $pageData['description']);
+		$field->value = $this->getGooglePreview($page->seo_title, $page->httpUrl, $page->seo_description);
 		
-		$e->return->add($field);
-		
-		$field = $this->modules->get("InputfieldText");
-		$field->name = $this->prefix."title";
-		$field->label = $this->_("Title");
-		$field->description = "A good length for a title is 60 characters.";
-		$field->value = $pageData['title'];
-
-		$e->return->add($field);
-		
-		
-		$field = $this->modules->get("InputfieldText");
-		$field->name = $this->prefix."keywords";
-		$field->label = $this->_("Keywords");
-		$field->description = "";
-		$field->value = $pageData['keywords'];
-		
-		$e->return->add($field);
-		
-		
-		$field = $this->modules->get("InputfieldText");
-		$field->name = $this->prefix."description";
-		$field->label = $this->_("Description");
-		$field->description = "A good length for a description is 160 characters.";
-		$field->value = $pageData['description'];
-		
-		$e->return->add($field);
-		
-		
-		$field = $this->modules->get("InputfieldText");
-		$field->name = $this->prefix."image";
-		$field->label = $this->_("Image");
-		$field->description = $this->_("Please enter the url to a preview image.");
-		$field->value = $pageData['image'];
-		
-		$e->return->add($field);
-		
-		
-		$field = $this->modules->get("InputfieldText");
-		$field->name = $this->prefix."canonical";
-		$field->label = $this->_("Canonical Link");
-		$field->description = "";
-		$field->value = $pageData['canonical'];
-		
-		$e->return->add($field);
-		
-		
-		$field = $this->modules->get("InputfieldTextarea");
-		$field->name = $this->prefix."custom";
-		$field->label = $this->_("Custom");
-		$field->description = $this->_("If you need additional Meta tags just add them here.");
-		$field->value = $pageData['custom'];
-		
-		$e->return->add($field);
-		
-		
-		$this->modules->get('FieldtypeFieldsetClose');
-		$field = new InputfieldFieldsetClose;
-		$field->name = $this->prefix."meta_END";
-		
-		$e->return->add($field);
-	}
-
-	/**
-	 * Because the fields are not real fields they need to be saved in another way
-	 *
-	 */
-	public function saveSEOTab(HookEvent $e) {
-		if(!count($_POST)) return;
-		
-		$post = $this->config->input->post;
-		$pageSEOData = array(
-			 'title' => $post->{$this->prefix.'title'}, 
-			 'keywords' => $post->{$this->prefix.'keywords'}, 
-			 'description' => $post->{$this->prefix.'description'}, 
-			 'image' => $post->{$this->prefix.'image'}, 
-			 'canonical' => $post->{$this->prefix.'canonical'}, 
-			 'robots' => $post->{$this->prefix.'robots'}, 
-			 'custom' => $post->{$this->prefix.'custom'}
-		);
-
-		// TODO: find a better way to get the id
-		$this->savePageSEO($this->config->input->get->id, $pageSEOData);
+		$e->return->insertAfter($field, $e->return->get('seo_tab'));
 	}
 	
-	/**
-	 * Saves the data for one page
-	 *
-	 */
-	private function savePageSEO($id, $data) {
-		$moduleData = wire('modules')->getModuleConfigData($this);
-		
-		$moduleData['pages'][$id] = $data;
-		
-		wire('modules')->saveModuleConfigData($this, $moduleData);
-		
-	}
-	
-	/**
-	 * Loads and returns the data for one page
-	 *
-	 */
-	private function getPageSEO($id) {
-		$dataOrg = wire('modules')->getModuleConfigData($this);
-
-		if (isset($dataOrg['pages']) && isset($dataOrg['pages'][$id])) {
-		      return $dataOrg['pages'][$id];
-	   	} else {
-		       return array(
-		               'title' => '',
-		               'keywords' => '',
-		               'description' => '',
-		               'image' => '',
-		               'canonical' => '',
-		               'robots' => '',
-		               'custom' => '',
-		       );
-	   	}
-	}
 	
 	/**
 	 * Generates a google styled preview for the SEO Tab
@@ -250,56 +137,15 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$html .= '<span class="SEO_google_link">'.($url ? $url : 'URL').'</span>';
 		$html .= '<span class="SEO_google_description">'.($description ? substr($description, 0, 155) : 'Description').'.</span></div>';
 		$html .= '<style>
-					.SEO_google_wrapper {
-						float:left;
-						margin:10px 0px;
-						width:512px;
-					}
-					
-					.SEO_google_title {
-						color: #1a0dab;
-						clear:both;
-						width:auto;
-						float:left;
-						font-family: arial,sans-serif;
-						font-size: 16px;
-					}
-					
-					.SEO_google_title:hover {
-						text-decoration:underline;
-						cursor:pointer;
-					}
-					
-					.SEO_google_link {
-						height: 17px;
-						line-height: 16px;
-						color: #006621;
-						font-style: normal;
-						font-size:13px;
-						clear:both;
-						float:left;
-						font-family: arial,sans-serif;
-					}
-					
-					.SEO_google_description {
-						line-height: 16px;
-						color: #545454;
-						font-style: normal;
-						font-size:13px;
-						clear:both;
-						float:left;
-						font-family: arial,sans-serif;
-					}
-		</style>';
+					.SEO_google_wrapper{float:left;width:512px;margin:10px 0;}
+					.SEO_google_title{color:#1a0dab;clear:both;width:auto;float:left;font-family:arial,sans-serif;font-size:16px;}
+					.SEO_google_title:hover{text-decoration:underline;cursor:pointer;}
+					.SEO_google_link{height:17px;line-height:16px;color:#006621;font-style:normal;font-size:13px;clear:both;float:left;font-family:arial,sans-serif;}
+					.SEO_google_description{line-height:16px;color:#545454;font-style:normal;font-size:13px;clear:both;float:left;font-family:arial,sans-serif;}
+				  </style>';
 		
 		return $html;
 	}
-	
-	
-	
-	
-	/* ---- FRONTEND ---- */
-	
 	
 	
 	/**
@@ -307,89 +153,185 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	 *
 	 */
 	public function hookFrontendPage(HookEvent $event) {
-		$pageDataDefault = $this->getPageSEO($this->page->id);
+		// get page seo data
+		$page = wire('pages')->get($event->object->id);
+		$pageData = array();
+		foreach($page->fields as $field) {
+			if(preg_match("%^seo_(.*)%Uis", $field->name) && $field->name != 'seo_tab' && $field->name != 'seo_tab_END') {
+				$pageData[str_replace('seo_', '', $field->name)] = $page->get($field->name);
+			}
+		}
+		
+		// get config seo data
 		$configData = wire('modules')->getModuleConfigData($this);
-		unset($configData['pages'], $configData['excludedTemplates'], $configData['useParents'], $configData['usePermission'], $configData['method']);
-		$mixedData = array_merge((array)$configData, (array)$pageDataDefault);
-		
-
-		// use configuration and/or smart values
-		if($this->titleSmart && $pageDataDefault['title'] == '' && $this->page->get(implode('|', $this->titleSmart)) != '') $mixedData['title'] = $this->page->get(implode('|', $this->titleSmart));
-		if($mixedData['title'] == '' && $this->useParents && $this->page->id != '1') $mixedData['title'] = $this->getParentValue($this->page, 'title');
-		
-		if($this->keywordsSmart && $pageDataDefault['keywords'] == '' && $this->page->get(implode('|', $this->keywordsSmart)) != '') $mixedData['keywords'] = $this->page->get(implode('|', $this->keywordsSmart));
-		if($mixedData['keywords'] == '' && $this->useParents && $this->page->id != '1') $mixedData['keywords'] = $this->getParentValue($this->page, 'keywords');
-		
-		if($this->descriptionSmart && $pageDataDefault['description'] == '' && $this->page->get(implode('|', $this->descriptionSmart)) != '') $mixedData['description'] = $this->page->get(implode('|', $this->descriptionSmart));
-		if($mixedData['description'] == '' && $this->useParents && $this->page->id != '1') $mixedData['description'] = $this->getParentValue($this->page, 'description');
-
-		if($this->imageSmart && $pageDataDefault['image'] == '' && @$this->page->get(implode('|', $this->imageSmart))->first()->url != '') $mixedData['image'] = $this->page->get(implode('|', $this->imageSmart))->first()->url;
-
-		unset($mixedData['titleSmart'], $mixedData['keywordsSmart'], $mixedData['descriptionSmart'], $mixedData['imageSmart']);
-		
-
+	
+		foreach($pageData as $fieldKey => $fieldValue) {
+			// if the field has content we can continue
+			if($fieldValue != '') continue;
+			 
+			// otherwise we try do add default content
+			if($configData['useParents']) {
+				// use parent data
+				$pageData[$fieldKey] = $this->getParentValue($page, $fieldKey);
+			} else {
+				// use smart data or default data
+				switch($fieldKey) {
+					case 'title': 
+						if($configData['title']) {
+							$pageData['title'] = $configData['title'];
+						} elseif($configData['titleSmart'] && $page->get(implode('|', $configData['titleSmart'])) != '') {
+							$pageData['title'] = $page->get(implode('|', $configData['titleSmart']));
+						}
+					break;
+					case 'keywords': 
+						if($configData['keywords']) {
+							$pageData['keywords'] = $configData['keywords'];
+						} elseif($configData['keywordsSmart'] && $page->get(implode('|', $configData['keywordsSmart'])) != '') {
+							$pageData['keywords'] = $page->get(implode('|', $configData['keywordsSmart']));
+						}
+					break;
+					case 'description': 
+						if($configData['description']) {
+							$pageData['description'] = $configData['description'];
+						} elseif($configData['descriptionSmart'] && $page->get(implode('|', $configData['descriptionSmart'])) != '') {
+							$pageData['description'] = $page->get(implode('|', $configData['descriptionSmart']));
+						}
+					break;
+					case 'image': 
+						if($configData['image']) {
+							$pageData['image'] = $configData['image'];
+						} elseif($configData['imageSmart'] && count($page->get(implode('|', $configData['imageSmart']))) > 0) {
+							$pageData['image'] = $page->get(implode('|', $configData['imageSmart']))->first()->httpUrl;
+						}
+					break;
+				}
+				
+			}
+			
+			
+		}
+	
 		
 		// add generator
-		if($mixedData['includeGenerator']) $mixedData['generator'] = 'ProcessWire '.$this->config->version;
-		unset($mixedData['includeGenerator']);
+		if($configData['includeGenerator']) $pageData['generator'] = 'ProcessWire '.wire('config')->version;
 		
-		// add opengraph
+		// add author
+		if($configData['author']) $pageData['author'] = $configData['author'];
+		
+		// add robots
+		if($configData['robots']) $pageData['robots'] = $configData['robots'];
+		
+		// add opengraph and canonical
+		if(!$pageData['canonical']) $pageData['canonical'] = $page->httpUrl;
 		if($configData['includeOpenGraph']) {
-			$mixedData['og:site_name'] = @$mixedData['sitename'];
-			$mixedData['og:title'] = @$mixedData['title'];
-			$mixedData['og:url'] = ((@$mixedData['canonical']) ? $mixedData['canonical'] : $this->page->httpUrl);
-			$mixedData['og:description'] = @$mixedData['description'];
-			$mixedData['og:type'] = @$mixedData['website'];
-			$mixedData['og:image'] = @$mixedData['image'];
-		}
-		unset($mixedData['includeOpenGraph'], $mixedData['sitename']);
+			$pageData['og:site_name'] = $configData['sitename'];
+			$pageData['og:title'] = $pageData['title'];
+			$pageData['og:url'] = $pageData['canonical'];
+			$pageData['og:description'] = $pageData['description'];
+			$pageData['og:type'] = 'website'; // TODO: Add more options
+			$pageData['og:image'] = $pageData['image'];
+		}	
 		
+		// add twitter
+		if($configData['includeTwitter']) {
+			$pageData['twitter:card'] = 'summary'; // TODO: Add more options
+			$pageData['twitter:site'] = '@'.$configData['twitterUsername'];
+			$pageData['twitter:title'] = $pageData['title'];
+			$pageData['twitter:url'] = $pageData['canonical'];
+			$pageData['twitter:description'] = $pageData['description'];
+			$pageData['twitter:image'] = $pageData['image'];
+		}		
+		
+		
+		//add custom
+		$pageData['custom'] = (array)$this->parseCustom($pageData['custom']);
+		$configData['custom'] = (array)$this->parseCustom($configData['custom']);
+		
+		$pageData['custom'] = array_merge($configData['custom'], $pageData['custom']);
 		
 		// add google analytics
 		$googleAnalytics = '';
-		if($mixedData['googleAnalytics']) {
-		$googleAnalytics = "
-<!-- Google Analytics -->
-<script>
-  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-
-  ga('create', '".$mixedData['googleAnalytics']."', 'auto');
-  ga('send', 'pageview');
-
-</script>
-<!-- End: Google Analytics -->";
+		if($configData['googleAnalytics']) {
+			$googleAnalytics = '
+			<!-- Google Analytics -->
+			<script>
+			  (function(i,s,o,g,r,a,m){i[\'GoogleAnalyticsObject\']=r;i[r]=i[r]||function(){
+			  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+			  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+		 	  })(window,document,\'script\',\'//www.google-analytics.com/analytics.js\',\'ga\');
+			
+			  ga(\'create\', \''.$configData['googleAnalytics'].'\', \'auto\');
+			  ga(\'send\', \'pageview\');
+			
+			</script>
+			<!-- End: Google Analytics -->';
 		}
-		unset($mixedData['googleAnalytics']);
-		
 		
 		
 		// add "render"
 		$rendered = '';
-		foreach(array_filter($mixedData) as $name => $content) {
+		foreach($pageData as $name => $content) {
+			if($name == 'custom') { 
+				foreach($content as $key => $value) {
+					$rendered .= '<meta name="'.$key.'" content="'.$value.'">'."\n"; 
+				}
+				continue; 
+			}
+			if($name == 'title') {
+				if($this->titleFormat == '') continue;
+				$rendered .= '<title>'.$this->parseTitle($page, $content).'</title>'; 
+				continue;
+			}
 			if($name == 'robots') $content = implode(', ', $content);
 			$rendered .= '<meta name="'.$name.'" content="'.$content.'">'."\n\r";
 		}
 		
-		$mixedData['render'] = $rendered.((@$mixedData['custom']) ? $mixedData['custom'] : '').$googleAnalytics."\n\r";
+		$rendered .= preg_replace('/^\s+|\s+$/m', '', $googleAnalytics)."\n";
 		
-		$event->return = (object)$mixedData;
+		$pageData['render'] = $pageData['rendered'] = $rendered;
+		$event->return = (object)$pageData;
 	}
 	
 	
 	
 	private function getParentValue($page, $what = '') {
-		if($page->id == 1) return;
+		if($page->id == 1) return '';
 		$parent = $page->parent();
-		$data = $this->getPageSEO($parent->id);
-		if($data[$what] != '') return $data[$what];
+		if($parent->get('seo_'.$what) != '') return $parent->get('seo_'.$what);
 		return $this->getParentValue($parent, $what);
 	}
 	
 	
+	private function parseTitle($page, $title) {
+		$tags = array(
+			'title' => $title,
+			'sitename' => $this->sitename
+		);
+		
+		$return = $this->titleFormat;
+		foreach($tags as $tag => $value) {
+			$return = str_replace("{".$tag."}", $value, $return);
+		}
+
+		return $return;
+	}
 	
+	
+	private function parseCustom($custom) {
+		if(trim($custom) == '') return;
+		
+		$return = '';
+		$lines = explode("\n", $custom);
+		foreach($lines as $line) {
+			list($key, $value) = explode(':=', $line);
+			$key = preg_replace('%[^A-Za-z0-9\-\.\:\_]+%', '', str_replace(' ', '-', trim($key)));	
+			$value = htmlentities(html_entity_decode(trim($value)));
+			$return[$key] = $value;
+		}
+		
+		return $return;
+	}
+
 	
 	/**
 	 * Returns an object including all the data (only config/defaults)
@@ -397,8 +339,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	 */
 	public function hookFrontendConfig(HookEvent $event) {
 		$moduleData = wire('modules')->getModuleConfigData($this);
-		unset($moduleData['pages']);
-		
+		$moduleData['custom'] = (array)$this->parseCustom($moduleData['custom']);
 		$event->return = (object)$moduleData;
 	}
 	
@@ -410,115 +351,221 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	 *
 	 */
 	static public function getModuleConfigInputfields(array $data) {
-
-		$prefix = 'SEO_';
-
-		// this is a container for fields, basically like a fieldset
-		$fields = new InputfieldWrapper();
-
 		// since this is a static function, we can't use $this->modules, so get them from the global wire() function
 		$modules = wire('modules');
-		$selectFields = wire('fields');
-
+		$input = wire('input');
+		$fields = wire('fields');
+		$tmpTemplates = wire('templates');
+		foreach($tmpTemplates as $template) { // exclude system fields
+			if($template->flags & Template::flagSystem) continue;
+			$templates[] = $template;
+		}
+		
 		// merge default config settings (custom values overwrite defaults)
 		$defaults = self::getDefaultConfig();
 		$data = array_merge($defaults, $data);
+		
+
+
+
+
+		// Add/remove seo fields from templates
+		if($input->post->submit_save_module) {
+			
+			$includedTemplates = (array)$input->post->includeTemplates;
+			
+			foreach($templates as $template) {
+				if(in_array($template->name, $includedTemplates)) {
+					if($template->hasField('seo_tab')) {
+						continue;
+					} else {
+						// add seo fields
+						$seoFields = self::getDefaultFields();
+						unset($seoFields[count($seoFields)-1]); // unset closing seo_tab_END
+						
+						foreach($fields as $seoField) {
+							if(preg_match("%^seo_(.*)%Uis", $seoField->name) && !in_array($seoField->name, self::getDefaultFields())) {
+								array_push($seoFields, $seoField->name);
+							}
+						}
+						
+						array_push($seoFields, 'seo_tab_END'); // add closing again
+						
+						//add fields to template
+						foreach($seoFields as $templateField) {
+							$template->fields->add($fields->get($templateField));
+						}
+						$template->fields->save();
+					}
+				} else {			
+					if($template->hasField('seo_tab')) {
+						// remove seo fields						
+						foreach($template->fields as $templateField) {
+							if(in_array($templateField->name, self::getDefaultFields())) {
+								$template->fields->remove($templateField);
+							}
+						}
+						$template->fields->save();
+					} else {
+						continue;
+					}
+				}
+			}
+
+		}
+		
+		
 
 		
+		// this is a container for fields, basically like a fieldset
+		$form = new InputfieldWrapper();
+
+		// Included fields
+		$field = $modules->get("InputfieldAsmSelect");
+		$field->name = "includeTemplates";
+		$field->label = __("Templates with SEO tab");
+		$field->description = "Choose the templates which should get a SEO tab.";
+		foreach($templates as $template) $field->addOption($template->name);
+		$field->value = $data['includeTemplates'];
+		$field->notes = __('Be careful with this field. If you remove an entry all of it\'s "seo_*" fields get deleted (including the data).');
+		$form->add($field);
+		
+		
+		// Author
+		$field = $modules->get("InputfieldText");
+		$field->name = "author";
+		$field->label = __("Author");
+		$field->description = "";
+		$field->value = $data['author'];
+		$form->add($field);
+		
+		// Site Name
 		$field = $modules->get("InputfieldText");
 		$field->name = "sitename";
 		$field->label = __("Site Name");
 		$field->description = "";
 		$field->value = $data['sitename'];
-		$fields->add($field);
+		$form->add($field);
+
+
+		$fieldset = $modules->get("InputfieldFieldset");
+		$fieldset->label = "Advanced";
+		$fieldset->collapsed = Inputfield::collapsedNo;
+		$form->add($fieldset);
 		
+		$field = $modules->get("InputfieldCheckbox");
+		$field->name = "useParents";
+		$field->label = __("Use parent's values if empty?");
+		$field->description = "Parent's values will be used as default if you don't define page specific meta data and leave the fields below blank and don't choose smart fields.";
+		$field->checked = $data['useParents'];
+		$fieldset->add($field);
 		
+		// Default Title
 		$field = $modules->get("InputfieldText");
 		$field->name = "title";
 		$field->label = __("Title");
 		$field->description = "A good length for a title is 60 characters.";
 		$field->value = $data['title'];
 		$field->columnWidth = '50%';
-		$fields->add($field);
+		$field->showIf = 'useParents=0';
+		$fieldset->add($field);
 		
 		$field = $modules->get("InputfieldAsmSelect");
 		$field->name = "titleSmart";
 		$field->label = __("Smart Title");
 		$field->description = "We will use those fields (in this particular order) if you don't fill in the title field";
-		foreach($selectFields as $selectField) $field->addOption($selectField->name);
+		foreach($fields as $selectField) $field->addOption($selectField->name);
 		$field->value = $data['titleSmart'];
 		$field->columnWidth = '50%';
-		$fields->add($field);
+		$field->showIf = 'useParents=0';
+		$fieldset->add($field);
 		
-		
+		// Default Keywords
 		$field = $modules->get("InputfieldText");
 		$field->name = "keywords";
 		$field->label = __("Keywords");
 		$field->description = "";
 		$field->value = $data['keywords'];
 		$field->columnWidth = '50%';
-		$fields->add($field);
+		$field->showIf = 'useParents=0';
+		$fieldset->add($field);
 		
 		$field = $modules->get("InputfieldAsmSelect");
 		$field->name = "keywordsSmart";
 		$field->label = __("Smart Keywords");
 		$field->description = "We will use those fields (in this particular order) if you don't fill in the keywords field";
-		foreach($selectFields as $selectField) $field->addOption($selectField->name);
+		foreach($fields as $selectField) $field->addOption($selectField->name);
 		$field->value = $data['keywordsSmart'];
 		$field->columnWidth = '50%';
-		$fields->add($field);
+		$field->showIf = 'useParents=0';
+		$fieldset->add($field);
 		
-		
+		// Default Description
 		$field = $modules->get("InputfieldText");
 		$field->name = "description";
 		$field->label = __("Description");
 		$field->description = "A good length for a description is 160 characters.";
 		$field->value = $data['description'];
 		$field->columnWidth = '50%';
-		$fields->add($field);
+		$field->showIf = 'useParents=0';
+		$fieldset->add($field);
 		
 		$field = $modules->get("InputfieldAsmSelect");
 		$field->name = "descriptionSmart";
 		$field->label = __("Smart Description");
 		$field->description = "We will use those fields (in this particular order) if you don't fill in the description field";
-		foreach($selectFields as $selectField) $field->addOption($selectField->name);
+		foreach($fields as $selectField) $field->addOption($selectField->name);
 		$field->value = $data['descriptionSmart'];
 		$field->columnWidth = '50%';
-		$fields->add($field);
+		$field->showIf = 'useParents=0';
+		$fieldset->add($field);
 		
-		
+		// Default Image
 		$field = $modules->get("InputfieldText");
 		$field->name = "image";
 		$field->label = __("Image");
 		$field->description = "";
 		$field->value = $data['image'];
 		$field->columnWidth = '50%';
-		$fields->add($field);
+		$field->showIf = 'useParents=0';
+		$fieldset->add($field);
 		
 		$field = $modules->get("InputfieldAsmSelect");
 		$field->name = "imageSmart";
 		$field->label = __("Smart Image");
 		$field->description = "We will use the first image from the specified image field.";
-		foreach($selectFields->find('type=FieldtypeImage') as $selectField) $field->addOption($selectField->name);
+		foreach($fields->find('type=FieldtypeImage') as $selectField) $field->addOption($selectField->name);
 		$field->value = $data['imageSmart'];
 		$field->columnWidth = '50%';
-		$fields->add($field);
+		$field->showIf = 'useParents=0';
+		$fieldset->add($field);
+
+
+		// title format
+		$field = $modules->get("InputfieldText");
+		$field->name = "titleFormat";
+		$field->label = __("Title Format");
+		$field->description = "Use this field to adjust the title format. If left empty the <title> tag won't be included.";
+		$field->value = $data['titleFormat'];
+		$field->notes = 'You can use: {title}, {sitename}';
+		$fieldset->add($field);
 		
 
-		
+		// Custom
 		$field = $modules->get("InputfieldTextarea");
 		$field->name = "custom";
 		$field->label = __("Custom");
-		$field->description = "";
+		$field->description = "If you want to add other meta tags, you can do it here.";
 		$field->value = $data['custom'];
-		$fields->add($field);
+		$field->notes = 'Please use this schema: name := content. One tag per line. Special characters are only allowed in the content part and get converted to HTML.';
+		$fieldset->add($field);
 		
 		
-		
+		// Robots
 		$field = $modules->get("InputfieldAsmSelect");
 		$field->name = "robots";
 		$field->label = __("Robots");
-		$field->description = "";
+		$field->description = "The robots settings will tell search engine which data they are allowed to include/index.";
 		$field->addOption('index');
 		$field->addOption('follow');
 		$field->addOption('archive');
@@ -529,74 +576,71 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->addOption('noodp');
 		$field->addOption('noydir');
 		$field->value = $data['robots'];
-		$fields->add($field);
+		$fieldset->add($field);
 		
 		
-		
+		// Include stuff
 		$field = $modules->get("InputfieldCheckbox");
 		$field->name = "includeGenerator";
 		$field->label = __("Include Generator?");
-		$field->description = "";
+		$field->description = 'This will include a meta tag called "generator" to show that this site was created with "ProcessWire '.wire('config')->version.'".';
 		$field->checked = $data['includeGenerator'];
-		$fields->add($field);
+		$field->columnWidth = '33%';
+		$fieldset->add($field);
 		
 		$field = $modules->get("InputfieldCheckbox");
 		$field->name = "includeOpenGraph";
-		$field->label = __("Include Open Graph?");
-		$field->description = "";
+		$field->label = __("Include (Basic) Open Graph?");
+		$field->description = 'The Open Graph meta tags are prefered by Facebook and several other sites.';
 		$field->checked = $data['includeOpenGraph'];
-		$fields->add($field);
-		
-		
+		$field->columnWidth = '34%';
+		$fieldset->add($field);
 		
 		$field = $modules->get("InputfieldCheckbox");
-		$field->name = "useParents";
-		$field->label = __("Use parent's values as default?");
-		$field->description = "Parent's values will be used as default if you don't define page specific meta data and leave the fields above blank and don't choose smart fields.";
-		$field->checked = $data['useParents'];
-		$fields->add($field);
+		$field->name = "includeTwitter";
+		$field->label = __("Include (Basic) Twitter Cards?");
+		$field->description = 'This will help Twitter to extract the right data from your site.';
+		$field->checked = $data['includeTwitter'];
+		$field->columnWidth = '33%';
+		$fieldset->add($field);
 		
+		$field = $modules->get("InputfieldText");
+		$field->name = "twitterUsername";
+		$field->label = __("Twitter Username");
+		$field->description = 'Your Twitter username (without "@") is needed for the "include Twitter" option.';
+		$field->checked = $data['twitterUsername'];
+		$field->columnWidth = '100%';
+		$field->showIf = 'includeTwitter=1';
+		$fieldset->add($field);
 
-		/*
-		$field = $modules->get("InputfieldCheckbox");
-		$field->name = "usePermission";
-		$field->label = __("Only user with 'page-seo' permission can see/edit the tab?");
-		$field->description = "";
-		$field->checked = $data['usePermission'];
-		$fields->add($field);
-		*/
-		
-		$selectTemplates = wire('templates');
-		$field = $modules->get("InputfieldAsmSelect");
-		$field->name = "excludedTemplates";
-		$field->label = __("Exclude Templates");
-		$field->description = "Chosse the templates which shouldn't have a seo tab";
-		foreach($selectTemplates as $selectTemplate) $field->addOption($selectTemplate->name);
-		$field->value = $data['excludedTemplates'];
-		$fields->add($field);
-		
-
-
-
+		// Choose Method
 		$field = $modules->get("InputfieldRadios");
 		$field->name = "method";
 		$field->label = __("Method");
-		$field->description = "Do you want to get the generated code included automatically or use hooks in your template files?";
+		$field->description = "Do you want to get the generated code included automatically in the <head> part of your site?";
 		$field->addOption('auto', __('Automatically'));
 		$field->addOption('manual', __('Manually'));
 		$field->value = $data['method'];
-		$fields->add($field);
-		
+		$fieldset->add($field);
 	
-	
+		// Analytics code
 		$field = $modules->get("InputfieldText");
 		$field->name = "googleAnalytics";
 		$field->label = __("Gogole Analytics Code");
 		$field->description = "Google Analytics code will be embedded if this field is populated.";
 		$field->notes = 'How to find your code: https://support.google.com/analytics/answer/1008080. It should look like: UA-XXXXXXX-X.';
 		$field->value = $data['googleAnalytics'];
-		$fields->add($field);
+		$fieldset->add($field);
 
+		
+		$field = $modules->get("InputfieldMarkup");
+		$field->label = __("Multilanguage");
+		$line[] = __('If your site uses multiple languages you can use SEO fields in multiple languages to. To archive this, you have to change the fieldtypes of the SEO fields manually:');
+		$line[] = __('1. Go to "Setup > Fields". There are a lot of fields in the schema "seo_*". Now click on the field you want to have in multiple languages.');
+		$line[] = __('2. Change the "Type" e.g. from "Text" to "TextLanguage" and click "Save". That\'s it.');
+		$field->value = implode('<br>', $line);
+		$fieldset->add($field);
+		
 		
 		$field = $modules->get("InputfieldMarkup");
 		$field->label = __("Recommendations");
@@ -610,10 +654,128 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 							<li><a target="_blank" href="http://modules.processwire.com/modules/all-in-one-minify/">AIOM+</a> (AllInOneMinify)</li>
 						</ul>';
 		
-		$fields->add($field);
+		$fieldset->add($field);
 		
-		
+		return $form;
+	}
 	
-		return $fields;
+	
+	
+	
+	/**
+	 * Install and uninstall functions
+	 *
+	 */
+
+	public function ___install() {
+		
+		$fields = wire('fields');
+		
+		// Tab stuff
+		
+		if(!$fields->get('seo_tab')) {
+			$field = new Field;
+			$field->type = $this->modules->get('FieldtypeFieldsetTabOpen');
+			$field->name = "seo_tab";
+			$field->label = $this->_('SEO');
+			$field->tags = 'seo';
+			$field->save();
+		}
+
+		if(!$fields->get('seo_tab_END')) {
+			$field = new Field;
+			$field->type = $this->modules->get('FieldtypeFieldsetClose');
+			$field->name = "seo_tab_END";
+			$field->label = $this->_('Close an open fieldset');
+			$field->tags = 'seo';
+			$field->save();
+		}
+		
+		
+		// title, keywords, description, image, canonical, robots, custom
+		
+		if(!$fields->get('seo_title')) {
+			$field = new Field;
+			$field->type = $this->modules->get("FieldtypeText");
+			$field->name = "seo_title";
+			$field->label = $this->_("Title");
+			$field->description = "A good length for a title is 60 characters.";
+			$field->tags = 'seo';
+			$field->save();
+		}
+		
+		
+		if(!$fields->get('seo_keywords')) {
+			$field = new Field;
+			$field->type = $this->modules->get("FieldtypeText");
+			$field->name = "seo_keywords";
+			$field->label = $this->_("Keywords");
+			$field->description = "";
+			$field->tags = 'seo';
+			$field->save();
+		}
+		
+		
+		if(!$fields->get('seo_description')) {
+			$field = new Field;
+			$field->type = $this->modules->get("FieldtypeText");
+			$field->name = "seo_description";
+			$field->label = $this->_("Description");
+			$field->description = "A good length for a description is 160 characters.";
+			$field->tags = 'seo';
+			$field->save();
+		}
+		
+
+		if(!$fields->get('seo_image')) {
+			$field = new Field;
+			$field->type = $this->modules->get("FieldtypeText");
+			$field->name = "seo_image";
+			$field->label = $this->_("Image");
+			$field->description = $this->_('Please enter the URL (including "http://...") to a preview image.');
+			$field->tags = 'seo';
+			$field->save();
+		}
+		
+		
+		if(!$fields->get('seo_canonical')) {
+			$field = new Field;
+			$field->type = $this->modules->get("FieldtypeText");
+			$field->name = "seo_canonical";
+			$field->label = $this->_("Canonical Link");
+			$field->notes = 'The URL should include "http://...".';
+			$field->tags = 'seo';
+			$field->save();
+		}
+		
+		
+		if(!$fields->get('seo_custom')) {
+			$field = new Field;
+			$field->type = $this->modules->get("FieldtypeTextarea");
+			$field->name = "seo_custom";
+			$field->label = $this->_("Custom");
+			$field->description = "If you want to add other meta tags, you can do it here.";
+			$field->notes = 'Please use this schema: name := content. One tag per line. Special characters are only allowed in the content part and get converted to HTML.';
+			$field->tags = 'seo';
+			$field->save();
+		}
+
+
+	}
+	
+	
+	public function ___uninstall() {
+		$fields = wire('fields');
+		$templates = wire('templates');
+		
+		foreach(self::getDefaultFields() as $field) {
+			foreach($templates as $template) {
+				if(!$template->hasField($field)) continue;
+				$template->fields->remove($field);
+				$template->fields->save();
+			}
+			$fields->delete($fields->get($field));
+		}
+		
 	}
 }
