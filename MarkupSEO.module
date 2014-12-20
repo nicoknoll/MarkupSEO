@@ -424,7 +424,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field = $modules->get("InputfieldAsmSelect");
 		$field->name = "includeTemplates";
 		$field->label = __("Templates with SEO tab");
-		$field->description = "Choose the templates which should get a SEO tab.";
+		$field->description = __("Choose the templates which should get a SEO tab.");
 		foreach($templates as $template) $field->addOption($template->name);
 		$field->value = $data['includeTemplates'];
 		$field->notes = __('Be careful with this field. If you remove an entry all of it\'s "seo_*" fields get deleted (including the data).');
@@ -456,7 +456,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field = $modules->get("InputfieldCheckbox");
 		$field->name = "useParents";
 		$field->label = __("Use parent's values if empty?");
-		$field->description = "Parent's values will be used as default if you don't define page specific meta data and leave the fields below blank and don't choose smart fields.";
+		$field->description = __("Parent's values will be used as default if you don't define page specific meta data and leave the fields below blank and don't choose smart fields.");
 		$field->checked = $data['useParents'];
 		$fieldset->add($field);
 		
@@ -464,7 +464,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field = $modules->get("InputfieldText");
 		$field->name = "title";
 		$field->label = __("Title");
-		$field->description = "A good length for a title is 60 characters.";
+		$field->description = __("A good length for a title is 60 characters.");
 		$field->value = $data['title'];
 		$field->columnWidth = '50%';
 		$field->showIf = 'useParents=0';
@@ -473,7 +473,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field = $modules->get("InputfieldAsmSelect");
 		$field->name = "titleSmart";
 		$field->label = __("Smart Title");
-		$field->description = "We will use those fields (in this particular order) if you don't fill in the title field";
+		$field->description = __("We will use those fields (in this particular order) if you don't fill in the title field");
 		foreach($fields as $selectField) $field->addOption($selectField->name);
 		$field->value = $data['titleSmart'];
 		$field->columnWidth = '50%';
@@ -493,7 +493,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field = $modules->get("InputfieldAsmSelect");
 		$field->name = "keywordsSmart";
 		$field->label = __("Smart Keywords");
-		$field->description = "We will use those fields (in this particular order) if you don't fill in the keywords field";
+		$field->description = __("We will use those fields (in this particular order) if you don't fill in the keywords field");
 		foreach($fields as $selectField) $field->addOption($selectField->name);
 		$field->value = $data['keywordsSmart'];
 		$field->columnWidth = '50%';
@@ -504,7 +504,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field = $modules->get("InputfieldText");
 		$field->name = "description";
 		$field->label = __("Description");
-		$field->description = "A good length for a description is 160 characters.";
+		$field->description = __("A good length for a description is 160 characters.");
 		$field->value = $data['description'];
 		$field->columnWidth = '50%';
 		$field->showIf = 'useParents=0';
@@ -513,7 +513,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field = $modules->get("InputfieldAsmSelect");
 		$field->name = "descriptionSmart";
 		$field->label = __("Smart Description");
-		$field->description = "We will use those fields (in this particular order) if you don't fill in the description field";
+		$field->description = __("We will use those fields (in this particular order) if you don't fill in the description field");
 		foreach($fields as $selectField) $field->addOption($selectField->name);
 		$field->value = $data['descriptionSmart'];
 		$field->columnWidth = '50%';
@@ -533,7 +533,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field = $modules->get("InputfieldAsmSelect");
 		$field->name = "imageSmart";
 		$field->label = __("Smart Image");
-		$field->description = "We will use the first image from the specified image field.";
+		$field->description = __("We will use the first image from the specified image field.");
 		foreach($fields->find('type=FieldtypeImage') as $selectField) $field->addOption($selectField->name);
 		$field->value = $data['imageSmart'];
 		$field->columnWidth = '50%';
@@ -545,9 +545,9 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field = $modules->get("InputfieldText");
 		$field->name = "titleFormat";
 		$field->label = __("Title Format");
-		$field->description = "Use this field to adjust the title format. If left empty the <title> tag won't be included.";
+		$field->description = __("Use this field to adjust the title format. If left empty the <title> tag won't be included.");
 		$field->value = $data['titleFormat'];
-		$field->notes = 'You can use: {title}, {sitename}';
+		$field->notes = __('You can use: {title}, {sitename}');
 		$fieldset->add($field);
 		
 
@@ -555,9 +555,9 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field = $modules->get("InputfieldTextarea");
 		$field->name = "custom";
 		$field->label = __("Custom");
-		$field->description = "If you want to add other meta tags, you can do it here.";
+		$field->description = __("If you want to add other meta tags, you can do it here.");
 		$field->value = $data['custom'];
-		$field->notes = 'Please use this schema: name := content. One tag per line. Special characters are only allowed in the content part and get converted to HTML.';
+		$field->notes = __('Please use this schema: name := content. One tag per line. Special characters are only allowed in the content part and get converted to HTML.');
 		$fieldset->add($field);
 		
 		
@@ -565,7 +565,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field = $modules->get("InputfieldAsmSelect");
 		$field->name = "robots";
 		$field->label = __("Robots");
-		$field->description = "The robots settings will tell search engine which data they are allowed to include/index.";
+		$field->description = __("The robots settings will tell search engine which data they are allowed to include/index.");
 		$field->addOption('index');
 		$field->addOption('follow');
 		$field->addOption('archive');
@@ -583,7 +583,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field = $modules->get("InputfieldCheckbox");
 		$field->name = "includeGenerator";
 		$field->label = __("Include Generator?");
-		$field->description = 'This will include a meta tag called "generator" to show that this site was created with "ProcessWire '.wire('config')->version.'".';
+		$field->description = __('This will include a meta tag called "generator" to show that this site was created with "ProcessWire 2.x.x".');
 		$field->checked = $data['includeGenerator'];
 		$field->columnWidth = '33%';
 		$fieldset->add($field);
@@ -591,7 +591,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field = $modules->get("InputfieldCheckbox");
 		$field->name = "includeOpenGraph";
 		$field->label = __("Include (Basic) Open Graph?");
-		$field->description = 'The Open Graph meta tags are prefered by Facebook and several other sites.';
+		$field->description = __('The Open Graph meta tags are prefered by Facebook and several other sites.');
 		$field->checked = $data['includeOpenGraph'];
 		$field->columnWidth = '34%';
 		$fieldset->add($field);
@@ -599,7 +599,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field = $modules->get("InputfieldCheckbox");
 		$field->name = "includeTwitter";
 		$field->label = __("Include (Basic) Twitter Cards?");
-		$field->description = 'This will help Twitter to extract the right data from your site.';
+		$field->description = __('This will help Twitter to extract the right data from your site.');
 		$field->checked = $data['includeTwitter'];
 		$field->columnWidth = '33%';
 		$fieldset->add($field);
@@ -607,7 +607,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field = $modules->get("InputfieldText");
 		$field->name = "twitterUsername";
 		$field->label = __("Twitter Username");
-		$field->description = 'Your Twitter username (without "@") is needed for the "include Twitter" option.';
+		$field->description = __('Your Twitter username (without "@") is needed for the "include Twitter" option.');
 		$field->checked = $data['twitterUsername'];
 		$field->columnWidth = '100%';
 		$field->showIf = 'includeTwitter=1';
@@ -617,7 +617,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field = $modules->get("InputfieldRadios");
 		$field->name = "method";
 		$field->label = __("Method");
-		$field->description = "Do you want to get the generated code included automatically in the <head> part of your site?";
+		$field->description = __("Do you want to get the generated code included automatically in the <head> part of your site?");
 		$field->addOption('auto', __('Automatically'));
 		$field->addOption('manual', __('Manually'));
 		$field->value = $data['method'];
@@ -627,8 +627,8 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field = $modules->get("InputfieldText");
 		$field->name = "googleAnalytics";
 		$field->label = __("Gogole Analytics Code");
-		$field->description = "Google Analytics code will be embedded if this field is populated.";
-		$field->notes = 'How to find your code: https://support.google.com/analytics/answer/1008080. It should look like: UA-XXXXXXX-X.';
+		$field->description = __("Google Analytics code will be embedded if this field is populated.");
+		$field->notes = __('How to find your code: https://support.google.com/analytics/answer/1008080. It should look like: UA-XXXXXXX-X.');
 		$field->value = $data['googleAnalytics'];
 		$fieldset->add($field);
 
@@ -699,7 +699,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			$field->type = $this->modules->get("FieldtypeText");
 			$field->name = "seo_title";
 			$field->label = $this->_("Title");
-			$field->description = "A good length for a title is 60 characters.";
+			$field->description = $this->_("A good length for a title is 60 characters.");
 			$field->tags = 'seo';
 			$field->save();
 		}
@@ -721,7 +721,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			$field->type = $this->modules->get("FieldtypeText");
 			$field->name = "seo_description";
 			$field->label = $this->_("Description");
-			$field->description = "A good length for a description is 160 characters.";
+			$field->description = $this->_("A good length for a description is 160 characters.");
 			$field->tags = 'seo';
 			$field->save();
 		}
@@ -743,7 +743,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			$field->type = $this->modules->get("FieldtypeText");
 			$field->name = "seo_canonical";
 			$field->label = $this->_("Canonical Link");
-			$field->notes = 'The URL should include "http://...".';
+			$field->notes = $this->_('The URL should include "http://...".');
 			$field->tags = 'seo';
 			$field->save();
 		}
@@ -754,8 +754,8 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			$field->type = $this->modules->get("FieldtypeTextarea");
 			$field->name = "seo_custom";
 			$field->label = $this->_("Custom");
-			$field->description = "If you want to add other meta tags, you can do it here.";
-			$field->notes = 'Please use this schema: name := content. One tag per line. Special characters are only allowed in the content part and get converted to HTML.';
+			$field->description = $this->_("If you want to add other meta tags, you can do it here.");
+			$field->notes = $this->_('Please use this schema: name := content. One tag per line. Special characters are only allowed in the content part and get converted to HTML.');
 			$field->tags = 'seo';
 			$field->save();
 		}
