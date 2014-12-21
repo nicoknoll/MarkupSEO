@@ -134,7 +134,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	 */
 	private function getGooglePreview($title, $url, $description) {
 		$html  = '<div class="SEO_google_wrapper"><span class="SEO_google_title">'.($title ? $title : 'Title').'</span>';
-		$html .= '<span class="SEO_google_link">'.($url ? $url : $page->httpUrl).'</span>';
+		$html .= '<span class="SEO_google_link">'.($url ? $url : wire('page')->httpUrl).'</span>';
 		$html .= '<span class="SEO_google_description">'.($description ? substr($description, 0, 155) : 'This is just a short description.').'.</span></div>';
 		$html .= '<style>
 					.SEO_google_wrapper{float:left;width:512px;margin:10px 0;}
@@ -219,7 +219,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		if($configData['author']) $pageData['author'] = $configData['author'];
 		
 		// add robots
-		if($configData['robots']) $pageData['robots'] = $configData['robots'];
+		if($configData['robots']) $pageData['robots'] = implode(', ', $configData['robots']);
 		
 		// add opengraph and canonical
 		if(!$pageData['canonical']) $pageData['canonical'] = $page->httpUrl;
@@ -249,6 +249,10 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		
 		$pageData['custom'] = array_merge($configData['custom'], $pageData['custom']);
 		
+		foreach($pageData['custom'] as $key => $value) {
+			$pageData[$key] = $value; 
+		}
+		
 		// add google analytics
 		$googleAnalytics = '';
 		if($configData['googleAnalytics']) {
@@ -272,9 +276,6 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$rendered = '';
 		foreach($pageData as $name => $content) {
 			if($name == 'custom') { 
-				foreach($content as $key => $value) {
-					$rendered .= '<meta name="'.$key.'" content="'.$value.'">'."\n"; 
-				}
 				continue; 
 			}
 			if($name == 'title') {
@@ -282,9 +283,11 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 				$rendered .= '<title>'.$this->parseTitle($page, $content).'</title>'; 
 				continue;
 			}
-			if($name == 'robots') $content = implode(', ', $content);
 			$rendered .= '<meta name="'.$name.'" content="'.$content.'">'."\n\r";
 		}
+		
+		// add custom which can overwrite settings
+		
 		
 		$rendered .= preg_replace('/^\s+|\s+$/m', '', $googleAnalytics)."\n";
 		
@@ -325,7 +328,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		foreach($lines as $line) {
 			list($key, $value) = explode(':=', $line);
 			$key = preg_replace('%[^A-Za-z0-9\-\.\:\_]+%', '', str_replace(' ', '-', trim($key)));	
-			$value = trim($sanitizer->text(html_entity_decode($value)));
+			$value = trim(wire('sanitizer')->text(html_entity_decode($value)));
 			$return[$key] = $value;
 		}
 		
@@ -340,6 +343,10 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	public function hookFrontendConfig(HookEvent $event) {
 		$moduleData = wire('modules')->getModuleConfigData($this);
 		$moduleData['custom'] = (array)$this->parseCustom($moduleData['custom']);
+		$moduleData['robots'] = implode(', ', $moduleData['robots']);
+		
+		$moduleData = array_merge($moduleData, $moduleData['custom']);
+		
 		$event->return = (object)$moduleData;
 	}
 	
