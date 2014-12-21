@@ -121,7 +121,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		// Add google preview
 		$field = $this->modules->get("InputfieldMarkup");
 		$field->label = $this->_("Google Preview");
-		$field->description = $this->_('Updates while you type in a title or descrition.');
+		$field->description = $this->_('Updates while you type in a title or description.');
 		$field->value = $this->javascriptAutocomplete().$this->javascriptGooglePreview().$this->getGooglePreview($page->seo_title, $page->seo_canonical, $page->seo_description); // add javascript, too
 		$e->return->insertAfter($field, $e->return->get('seo_tab'));
 
