@@ -134,8 +134,10 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	 *
 	 */
 	private function getGooglePreview($title, $url, $description) {
+		$page = wire('pages')->get($this->config->input->get->id);
+		
 		$html  = '<div class="SEO_google_wrapper"><span class="SEO_google_title">'.($title ? $title : 'Title').'</span>';
-		$html .= '<span class="SEO_google_link">'.($url ? $url : wire('page')->httpUrl).'</span>';
+		$html .= '<span class="SEO_google_link">'.($url ? $url : $page->httpUrl).'</span>';
 		$html .= '<span class="SEO_google_description">'.($description ? substr($description, 0, 155) : 'This is just a short description.').'.</span></div>';
 		$html .= '<style>
 					.SEO_google_wrapper{float:left;width:512px;margin:10px 0;}
