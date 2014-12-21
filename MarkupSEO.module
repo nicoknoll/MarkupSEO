@@ -12,7 +12,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	public static function getModuleInfo() {
 		return array(
 			'title' => __('SEO'),
-			'version' => '0.5.0',
+			'version' => '0.6.0',
 			'summary' => __('The all-in-one SEO solution for ProcessWire.'),
 			'autoload' => true,
 			'requires' => array('ProcessWire>=2.4.0', 'PHP>=5.3.8')
@@ -46,7 +46,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			'twitterUsername' 	=> '',
 			'useParents' 		=> 0,
 			'method' 			=> 'auto',
-			'includeTemplates' 	=> '',
+			'includeTemplates' 	=> array(),
 			'usePermission' 		=> 0,
 			'googleAnalytics' 	=> ''
 		);
@@ -122,9 +122,9 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field = $this->modules->get("InputfieldMarkup");
 		$field->label = $this->_("Google Preview");
 		$field->description = $this->_('Will be updated after save.');
-		$field->value = $this->getGooglePreview($page->seo_title, $page->httpUrl, $page->seo_description);
-		
+		$field->value = $this->javascriptAutocomplete().$this->javascriptGooglePreview().$this->getGooglePreview($page->seo_title, $page->seo_canonical, $page->seo_description); // add javascript, too
 		$e->return->insertAfter($field, $e->return->get('seo_tab'));
+
 	}
 	
 	
@@ -134,8 +134,8 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	 */
 	private function getGooglePreview($title, $url, $description) {
 		$html  = '<div class="SEO_google_wrapper"><span class="SEO_google_title">'.($title ? $title : 'Title').'</span>';
-		$html .= '<span class="SEO_google_link">'.($url ? $url : 'URL').'</span>';
-		$html .= '<span class="SEO_google_description">'.($description ? substr($description, 0, 155) : 'Description').'.</span></div>';
+		$html .= '<span class="SEO_google_link">'.($url ? $url : $page->httpUrl).'</span>';
+		$html .= '<span class="SEO_google_description">'.($description ? substr($description, 0, 155) : 'This is just a short description.').'.</span></div>';
 		$html .= '<style>
 					.SEO_google_wrapper{float:left;width:512px;margin:10px 0;}
 					.SEO_google_title{color:#1a0dab;clear:both;width:auto;float:left;font-family:arial,sans-serif;font-size:16px;}
@@ -325,7 +325,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		foreach($lines as $line) {
 			list($key, $value) = explode(':=', $line);
 			$key = preg_replace('%[^A-Za-z0-9\-\.\:\_]+%', '', str_replace(' ', '-', trim($key)));	
-			$value = htmlentities(html_entity_decode(trim($value)));
+			$value = trim($sanitizer->text(html_entity_decode($value)));
 			$return[$key] = $value;
 		}
 		
@@ -468,6 +468,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->value = $data['title'];
 		$field->columnWidth = '50%';
 		$field->showIf = 'useParents=0';
+		$field->set('class', 'seo_autocomplete');
 		$fieldset->add($field);
 		
 		$field = $modules->get("InputfieldAsmSelect");
@@ -508,6 +509,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->value = $data['description'];
 		$field->columnWidth = '50%';
 		$field->showIf = 'useParents=0';
+		$field->set('class', 'seo_autocomplete');
 		$fieldset->add($field);
 		
 		$field = $modules->get("InputfieldAsmSelect");
@@ -626,7 +628,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		// Analytics code
 		$field = $modules->get("InputfieldText");
 		$field->name = "googleAnalytics";
-		$field->label = __("Gogole Analytics Code");
+		$field->label = __("Google Analytics Code");
 		$field->description = __("Google Analytics code will be embedded if this field is populated.");
 		$field->notes = __('How to find your code: https://support.google.com/analytics/answer/1008080. It should look like: UA-XXXXXXX-X.');
 		$field->value = $data['googleAnalytics'];
@@ -652,12 +654,65 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 							<li><a target="_blank" href="http://modules.processwire.com/modules/search-engine-referrer-tracker/">Search Engine Referrer Tracker</a> (SearchEngineReferrerTracker)</li>
 							<li><a target="_blank" href="http://modules.processwire.com/modules/process-redirects/">Redirects</a> (ProcessRedirects)</li>
 							<li><a target="_blank" href="http://modules.processwire.com/modules/all-in-one-minify/">AIOM+</a> (AllInOneMinify)</li>
-						</ul>';
+						</ul>'.self::javascriptAutocomplete(); // Add javascript
 		
 		$fieldset->add($field);
 		
 		return $form;
 	}
+	
+	static private function javascriptAutocomplete() {
+		$code = "
+		$(document).ready(function(){
+			
+			$('#Inputfield_seo_title, #Inputfield_seo_description, .seo_autocomplete').autocomplete({
+				minLength: 2,
+				source: function(request, response) {
+					var suggestions = $.ajax({url:'https://suggestqueries.google.com/complete/search',dataType:'jsonp',data:{q:request.term,cp:1,gs_id:6,xhr:'t',client:'youtube'}}).done(function(data){
+						console.log(data[1]);
+						response($.map(data[1], function(item) {
+							return {
+								label: item[0], 
+								value: item[0]
+							}
+						}));
+					});
+				}
+			}).keydown(function(event) {
+				if(event.keyCode == 13) {
+					// prevents enter from submitting the form
+					event.preventDefault();
+					return false;
+				}
+			}); 
+
+		});
+		";
+		return '<script type="text/javascript">'.$code.'</script>';
+	}
+	
+	static private function javascriptGooglePreview() {
+		$code = "
+		$(document).ready(function(){
+			
+			$('#Inputfield_seo_title').keyup(function(){
+				$('.SEO_google_title').html(((\$(this).val()) ? \$(this).val() : 'Title'));
+			}); 
+			
+			$('#Inputfield_seo_description').keyup(function(){
+				$('.SEO_google_description').html(((\$(this).val()) ? \$(this).val() : 'This is just a short description.'));
+			}); 
+			
+			$('#Inputfield_seo_canonical').keyup(function(){
+				$('.SEO_google_link').html(((\$(this).val()) ? \$(this).val() : '".wire('pages')->get(wire('input')->get->id)->httpUrl."'));
+			}); 
+	
+		});
+		";
+		return '<script type="text/javascript">'.$code.'</script>';
+	}
+	
+	
 	
 	
 	
