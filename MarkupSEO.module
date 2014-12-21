@@ -46,6 +46,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			'twitterUsername' 	=> '',
 			'useParents' 		=> 0,
 			'method' 			=> 'auto',
+			'addWhitespace'		=> 1,
 			'includeTemplates' 	=> array(),
 			'usePermission' 		=> 0,
 			'googleAnalytics' 	=> ''
@@ -280,16 +281,22 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			}
 			if($name == 'title') {
 				if($this->titleFormat == '') continue;
-				$rendered .= '<title>'.$this->parseTitle($page, $content).'</title>'; 
+				$rendered .= '<title>'.$this->parseTitle($page, $content).'</title>'.PHP_EOL; 
 				continue;
 			}
-			$rendered .= '<meta name="'.$name.'" content="'.$content.'">'."\n\r";
+			$rendered .= '<meta name="'.$name.'" content="'.$content.'">'.PHP_EOL;
 		}
 		
-		// add custom which can overwrite settings
+		// replace whitespaces
+		$rendered .= preg_replace('/^\s+|\s+$/m', '', $googleAnalytics).PHP_EOL;
 		
-		
-		$rendered .= preg_replace('/^\s+|\s+$/m', '', $googleAnalytics)."\n";
+		if($this->addWhitespace) {
+			$renderedTmp = '';
+			foreach(explode(PHP_EOL, $rendered) as $line) {
+				$renderedTmp .= "\t".$line.PHP_EOL;
+			}				
+			$rendered = $renderedTmp;
+		}
 		
 		$pageData['render'] = $pageData['rendered'] = $rendered;
 		$event->return = (object)$pageData;
@@ -324,7 +331,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		if(trim($custom) == '') return;
 		
 		$return = '';
-		$lines = explode("\n", $custom);
+		$lines = explode(PHP_EOL, $custom);
 		foreach($lines as $line) {
 			list($key, $value) = explode(':=', $line);
 			$key = preg_replace('%[^A-Za-z0-9\-\.\:\_]+%', '', str_replace(' ', '-', trim($key)));	
@@ -630,6 +637,16 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->addOption('auto', __('Automatically'));
 		$field->addOption('manual', __('Manually'));
 		$field->value = $data['method'];
+		$field->columnWidth = '50%';
+		$fieldset->add($field);
+		
+		// Add Whitespace
+		$field = $modules->get("InputfieldCheckbox");
+		$field->name = "addWhitespace";
+		$field->label = __("Add whitespace before tags?");
+		$field->description = __('This will add a little white space (one tab indent) before your meta tags in the "rendered" version. Perfectly if you use the automatically insert method.');
+		$field->checked = $data['addWhitespace'];
+		$field->columnWidth = '50%';
 		$fieldset->add($field);
 	
 		// Analytics code
