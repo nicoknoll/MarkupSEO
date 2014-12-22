@@ -626,7 +626,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->name = "twitterUsername";
 		$field->label = __("Twitter Username");
 		$field->description = __('Your Twitter username (without "@") is needed for the "include Twitter" option.');
-		$field->checked = $data['twitterUsername'];
+		$field->value = $data['twitterUsername'];
 		$field->columnWidth = '100%';
 		$field->showIf = 'includeTwitter=1';
 		$fieldset->add($field);
