@@ -52,7 +52,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			'googleAnalytics' 	=> ''
 		);
 	}
-	
+
 	static public function getDefaultFields() {
 		return array(
 			'seo_tab',
@@ -86,39 +86,39 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		 // frontend hooks
 		 $this->addHookAfter("ProcessPageView::execute", $this, 'hookMethodAuto');
 	 }
-	 
+
 	public function ready() {
 		// backend hooks
 		$editedPage = wire('pages')->get($this->config->input->get->id);
 		if(@$this->page->process == 'ProcessPageEdit' && in_array($editedPage->template->name, $this->includeTemplates)) {
 			$this->addHookAfter("ProcessPageEdit::buildFormContent", $this, 'hookCustomizeSeoTab');
 		}
-		
+
 		// frontend hooks
 		if($this->page->template != 'admin' && in_array($this->page->template->name, $this->includeTemplates)) {
 			$this->addHookProperty("Page::seo", $this, 'hookFrontendPage');
 			$this->addHookProperty("Config::seo", $this, 'hookFrontendConfig');
 		}
 	}
-	
+
 	/**
 	 * The hooking functions
 	 *
 	 */
 	public function hookMethodAuto(HookEvent $event) {
 		if($this->method != 'auto' || $this->page->template == 'admin' || !in_array($this->page->template->name, $this->includeTemplates)) return;
-		
+
 		// inject rendered meta tags into page
 		$dataRendered = $this->page->seo->render;
 		$event->return = str_ireplace("</head>", $dataRendered.'</head>', $event->return); 
 	}
-	
+
 
 	public function hookCustomizeSeoTab(HookEvent $e) {
 		$page = wire('pages')->get($this->config->input->get->id);
-		
+
 		if(!$e->return->get('seo_tab')) return;
-		
+
 		// Add google preview
 		$field = $this->modules->get("InputfieldMarkup");
 		$field->label = $this->_("Google Preview");
@@ -127,15 +127,15 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$e->return->insertAfter($field, $e->return->get('seo_tab'));
 
 	}
-	
-	
+
+
 	/**
 	 * Generates a google styled preview for the SEO Tab
 	 *
 	 */
 	private function getGooglePreview($title, $url, $description) {
 		$page = wire('pages')->get($this->config->input->get->id);
-		
+
 		$html  = '<div class="SEO_google_wrapper"><span class="SEO_google_title">'.($title ? $title : 'Title').'</span>';
 		$html .= '<span class="SEO_google_link">'.($url ? $url : $page->httpUrl).'</span>';
 		$html .= '<span class="SEO_google_description">'.($description ? substr($description, 0, 155) : 'This is just a short description.').'.</span></div>';
@@ -146,11 +146,11 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 					.SEO_google_link{height:17px;line-height:16px;color:#006621;font-style:normal;font-size:13px;clear:both;float:left;font-family:arial,sans-serif;}
 					.SEO_google_description{line-height:16px;color:#545454;font-style:normal;font-size:13px;clear:both;float:left;font-family:arial,sans-serif;}
 				  </style>';
-		
+
 		return $html;
 	}
-	
-	
+
+
 	/**
 	 * Returns an object including all the data (mixed config and page)
 	 *
@@ -164,14 +164,14 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 				$pageData[str_replace('seo_', '', $field->name)] = $page->get($field->name);
 			}
 		}
-		
+
 		// get config seo data
 		$configData = wire('modules')->getModuleConfigData($this);
-	
+
 		foreach($pageData as $fieldKey => $fieldValue) {
 			// if the field has content we can continue
 			if($fieldValue != '') continue;
-			 
+
 			// otherwise we try do add default content
 			if($configData['useParents']) {
 				// use parent data
@@ -204,26 +204,31 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 						if($configData['image']) {
 							$pageData['image'] = $configData['image'];
 						} elseif($configData['imageSmart'] && count($page->get(implode('|', $configData['imageSmart']))) > 0) {
-							$pageData['image'] = $page->get(implode('|', $configData['imageSmart']))->first()->httpUrl;
+							$imageFields = $page->get(implode('|', $configData['imageSmart']));
+							try {
+								$pageData['image'] = $page->get(implode('|', $configData['imageSmart']))->first()->httpUrl;
+							} catch (Exception $e) {
+								$pageData['image'] = $page->get(implode('|', $configData['imageSmart']))->httpUrl;
+							}
 						}
 					break;
 				}
-				
+
 			}
-			
-			
+
+
 		}
-	
-		
+
+
 		// add generator
 		if($configData['includeGenerator']) $pageData['generator'] = 'ProcessWire '.wire('config')->version;
-		
+
 		// add author
 		if($configData['author']) $pageData['author'] = $configData['author'];
-		
+
 		// add robots
 		if($configData['robots']) $pageData['robots'] = implode(', ', $configData['robots']);
-		
+
 		// add opengraph and canonical
 		if(!$pageData['canonical']) $pageData['canonical'] = $page->httpUrl;
 		if($configData['includeOpenGraph']) {
@@ -234,7 +239,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			$pageData['og:type'] = 'website'; // TODO: Add more options
 			$pageData['og:image'] = $pageData['image'];
 		}	
-		
+
 		// add twitter
 		if($configData['includeTwitter']) {
 			$pageData['twitter:card'] = 'summary'; // TODO: Add more options
@@ -244,18 +249,18 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			$pageData['twitter:description'] = $pageData['description'];
 			$pageData['twitter:image'] = $pageData['image'];
 		}		
-		
-		
+
+
 		//add custom
 		$pageData['custom'] = (array)$this->parseCustom($pageData['custom']);
 		$configData['custom'] = (array)$this->parseCustom($configData['custom']);
-		
+
 		$pageData['custom'] = array_merge($configData['custom'], $pageData['custom']);
-		
+
 		foreach($pageData['custom'] as $key => $value) {
 			$pageData[$key] = $value; 
 		}
-		
+
 		// add google analytics
 		$googleAnalytics = '';
 		if($configData['googleAnalytics']) {
@@ -266,15 +271,15 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
 			  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
 		 	  })(window,document,\'script\',\'//www.google-analytics.com/analytics.js\',\'ga\');
-			
+
 			  ga(\'create\', \''.$configData['googleAnalytics'].'\', \'auto\');
 			  ga(\'send\', \'pageview\');
-			
+
 			</script>
 			<!-- End: Google Analytics -->';
 		}
-		
-		
+
+
 		// add "render"
 		$rendered = '';
 		foreach($pageData as $name => $content) {
@@ -288,10 +293,10 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			}
 			$rendered .= '<meta name="'.$name.'" content="'.$content.'">'.PHP_EOL;
 		}
-		
+
 		// replace whitespaces
 		$rendered .= preg_replace('/^\s+|\s+$/m', '', $googleAnalytics).PHP_EOL;
-		
+
 		if($this->addWhitespace) {
 			$renderedTmp = '';
 			foreach(explode(PHP_EOL, $rendered) as $line) {
@@ -299,27 +304,27 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			}				
 			$rendered = $renderedTmp;
 		}
-		
+
 		$pageData['render'] = $pageData['rendered'] = $rendered;
 		$event->return = (object)$pageData;
 	}
-	
-	
-	
+
+
+
 	private function getParentValue($page, $what = '') {
 		if($page->id == 1) return '';
 		$parent = $page->parent();
 		if($parent->get('seo_'.$what) != '') return $parent->get('seo_'.$what);
 		return $this->getParentValue($parent, $what);
 	}
-	
-	
+
+
 	private function parseTitle($page, $title) {
 		$tags = array(
 			'title' => $title,
 			'sitename' => $this->sitename
 		);
-		
+
 		$return = $this->titleFormat;
 		foreach($tags as $tag => $value) {
 			$return = str_replace("{".$tag."}", $value, $return);
@@ -327,11 +332,11 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 
 		return $return;
 	}
-	
-	
+
+
 	private function parseCustom($custom) {
 		if(trim($custom) == '') return;
-		
+
 		$return = '';
 		$lines = explode(PHP_EOL, $custom);
 		foreach($lines as $line) {
@@ -340,11 +345,11 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			$value = trim(wire('sanitizer')->text(html_entity_decode($value)));
 			$return[$key] = $value;
 		}
-		
+
 		return $return;
 	}
 
-	
+
 	/**
 	 * Returns an object including all the data (only config/defaults)
 	 *
@@ -353,13 +358,13 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$moduleData = wire('modules')->getModuleConfigData($this);
 		$moduleData['custom'] = (array)$this->parseCustom($moduleData['custom']);
 		$moduleData['robots'] = implode(', ', $moduleData['robots']);
-		
+
 		$moduleData = array_merge($moduleData, $moduleData['custom']);
-		
+
 		$event->return = (object)$moduleData;
 	}
-	
-	
+
+
 
 
 	/**
@@ -376,20 +381,20 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			if($template->flags & Template::flagSystem) continue;
 			$templates[] = $template;
 		}
-		
+
 		// merge default config settings (custom values overwrite defaults)
 		$defaults = self::getDefaultConfig();
 		$data = array_merge($defaults, $data);
-		
+
 
 
 
 
 		// Add/remove seo fields from templates
 		if($input->post->submit_save_module) {
-			
+
 			$includedTemplates = (array)$input->post->includeTemplates;
-			
+
 			foreach($templates as $template) {
 				if(in_array($template->name, $includedTemplates)) {
 					if($template->hasField('seo_tab')) {
@@ -398,15 +403,15 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 						// add seo fields
 						$seoFields = self::getDefaultFields();
 						unset($seoFields[count($seoFields)-1]); // unset closing seo_tab_END
-						
+
 						foreach($fields as $seoField) {
 							if(preg_match("%^seo_(.*)%Uis", $seoField->name) && !in_array($seoField->name, self::getDefaultFields())) {
 								array_push($seoFields, $seoField->name);
 							}
 						}
-						
+
 						array_push($seoFields, 'seo_tab_END'); // add closing again
-						
+
 						//add fields to template
 						foreach($seoFields as $templateField) {
 							$template->fields->add($fields->get($templateField));
@@ -429,10 +434,10 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			}
 
 		}
-		
-		
 
-		
+
+
+
 		// this is a container for fields, basically like a fieldset
 		$form = new InputfieldWrapper();
 
@@ -445,8 +450,8 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->value = $data['includeTemplates'];
 		$field->notes = __('Be careful with this field. If you remove an entry all of it\'s "seo_*" fields get deleted (including the data).');
 		$form->add($field);
-		
-		
+
+
 		// Author
 		$field = $modules->get("InputfieldText");
 		$field->name = "author";
@@ -454,7 +459,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->description = "";
 		$field->value = $data['author'];
 		$form->add($field);
-		
+
 		// Site Name
 		$field = $modules->get("InputfieldText");
 		$field->name = "sitename";
@@ -468,14 +473,14 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$fieldset->label = "Advanced";
 		$fieldset->collapsed = Inputfield::collapsedNo;
 		$form->add($fieldset);
-		
+
 		$field = $modules->get("InputfieldCheckbox");
 		$field->name = "useParents";
 		$field->label = __("Use parent's values if empty?");
 		$field->description = __("Parent's values will be used as default if you don't define page specific meta data and leave the fields below blank and don't choose smart fields.");
 		$field->checked = $data['useParents'];
 		$fieldset->add($field);
-		
+
 		// Default Title
 		$field = $modules->get("InputfieldText");
 		$field->name = "title";
@@ -486,7 +491,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->showIf = 'useParents=0';
 		$field->set('class', 'seo_autocomplete');
 		$fieldset->add($field);
-		
+
 		$field = $modules->get("InputfieldAsmSelect");
 		$field->name = "titleSmart";
 		$field->label = __("Smart Title");
@@ -496,7 +501,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->columnWidth = '50%';
 		$field->showIf = 'useParents=0';
 		$fieldset->add($field);
-		
+
 		// Default Keywords
 		$field = $modules->get("InputfieldText");
 		$field->name = "keywords";
@@ -506,7 +511,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->columnWidth = '50%';
 		$field->showIf = 'useParents=0';
 		$fieldset->add($field);
-		
+
 		$field = $modules->get("InputfieldAsmSelect");
 		$field->name = "keywordsSmart";
 		$field->label = __("Smart Keywords");
@@ -516,7 +521,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->columnWidth = '50%';
 		$field->showIf = 'useParents=0';
 		$fieldset->add($field);
-		
+
 		// Default Description
 		$field = $modules->get("InputfieldText");
 		$field->name = "description";
@@ -527,7 +532,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->showIf = 'useParents=0';
 		$field->set('class', 'seo_autocomplete');
 		$fieldset->add($field);
-		
+
 		$field = $modules->get("InputfieldAsmSelect");
 		$field->name = "descriptionSmart";
 		$field->label = __("Smart Description");
@@ -537,7 +542,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->columnWidth = '50%';
 		$field->showIf = 'useParents=0';
 		$fieldset->add($field);
-		
+
 		// Default Image
 		$field = $modules->get("InputfieldText");
 		$field->name = "image";
@@ -547,7 +552,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->columnWidth = '50%';
 		$field->showIf = 'useParents=0';
 		$fieldset->add($field);
-		
+
 		$field = $modules->get("InputfieldAsmSelect");
 		$field->name = "imageSmart";
 		$field->label = __("Smart Image");
@@ -567,7 +572,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->value = $data['titleFormat'];
 		$field->notes = __('You can use: {title}, {sitename}');
 		$fieldset->add($field);
-		
+
 
 		// Custom
 		$field = $modules->get("InputfieldTextarea");
@@ -577,8 +582,8 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->value = $data['custom'];
 		$field->notes = __('Please use this schema: name := content. One tag per line. Special characters are only allowed in the content part and get converted to HTML.');
 		$fieldset->add($field);
-		
-		
+
+
 		// Robots
 		$field = $modules->get("InputfieldAsmSelect");
 		$field->name = "robots";
@@ -595,8 +600,8 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->addOption('noydir');
 		$field->value = $data['robots'];
 		$fieldset->add($field);
-		
-		
+
+
 		// Include stuff
 		$field = $modules->get("InputfieldCheckbox");
 		$field->name = "includeGenerator";
@@ -605,7 +610,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->checked = $data['includeGenerator'];
 		$field->columnWidth = '33%';
 		$fieldset->add($field);
-		
+
 		$field = $modules->get("InputfieldCheckbox");
 		$field->name = "includeOpenGraph";
 		$field->label = __("Include (Basic) Open Graph?");
@@ -613,7 +618,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->checked = $data['includeOpenGraph'];
 		$field->columnWidth = '34%';
 		$fieldset->add($field);
-		
+
 		$field = $modules->get("InputfieldCheckbox");
 		$field->name = "includeTwitter";
 		$field->label = __("Include (Basic) Twitter Cards?");
@@ -621,7 +626,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->checked = $data['includeTwitter'];
 		$field->columnWidth = '33%';
 		$fieldset->add($field);
-		
+
 		$field = $modules->get("InputfieldText");
 		$field->name = "twitterUsername";
 		$field->label = __("Twitter Username");
@@ -641,7 +646,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->value = $data['method'];
 		$field->columnWidth = '50%';
 		$fieldset->add($field);
-		
+
 		// Add Whitespace
 		$field = $modules->get("InputfieldCheckbox");
 		$field->name = "addWhitespace";
@@ -650,7 +655,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->checked = $data['addWhitespace'];
 		$field->columnWidth = '50%';
 		$fieldset->add($field);
-	
+
 		// Analytics code
 		$field = $modules->get("InputfieldText");
 		$field->name = "googleAnalytics";
@@ -660,7 +665,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->value = $data['googleAnalytics'];
 		$fieldset->add($field);
 
-		
+
 		$field = $modules->get("InputfieldMarkup");
 		$field->label = __("Multilanguage");
 		$line[] = __('If your site uses multiple languages you can use SEO fields in multiple languages to. To archive this, you have to change the fieldtypes of the SEO fields manually:');
@@ -668,8 +673,8 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$line[] = __('2. Change the "Type" e.g. from "Text" to "TextLanguage" and click "Save". That\'s it.');
 		$field->value = implode('<br>', $line);
 		$fieldset->add($field);
-		
-		
+
+
 		$field = $modules->get("InputfieldMarkup");
 		$field->label = __("Recommendations");
 		$string = __('For an even better SEO experience there are a couple of other modules I can recommend:');
@@ -681,16 +686,16 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 							<li><a target="_blank" href="http://modules.processwire.com/modules/process-redirects/">Redirects</a> (ProcessRedirects)</li>
 							<li><a target="_blank" href="http://modules.processwire.com/modules/all-in-one-minify/">AIOM+</a> (AllInOneMinify)</li>
 						</ul>'.self::javascriptAutocomplete(); // Add javascript
-		
+
 		$fieldset->add($field);
-		
+
 		return $form;
 	}
-	
+
 	static private function javascriptAutocomplete() {
 		$code = "
 		$(document).ready(function(){
-			
+
 			$('#Inputfield_seo_title, #Inputfield_seo_description, .seo_autocomplete').autocomplete({
 				minLength: 2,
 				source: function(request, response) {
@@ -716,44 +721,44 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		";
 		return '<script type="text/javascript">'.$code.'</script>';
 	}
-	
+
 	static private function javascriptGooglePreview() {
 		$code = "
 		$(document).ready(function(){
-			
+
 			$('#Inputfield_seo_title').keyup(function(){
 				$('.SEO_google_title').html(((\$(this).val()) ? \$(this).val() : 'Title'));
 			}); 
-			
+
 			$('#Inputfield_seo_description').keyup(function(){
 				$('.SEO_google_description').html(((\$(this).val()) ? \$(this).val() : 'This is just a short description.'));
 			}); 
-			
+
 			$('#Inputfield_seo_canonical').keyup(function(){
 				$('.SEO_google_link').html(((\$(this).val()) ? \$(this).val() : '".wire('pages')->get(wire('input')->get->id)->httpUrl."'));
 			}); 
-	
+
 		});
 		";
 		return '<script type="text/javascript">'.$code.'</script>';
 	}
-	
-	
-	
-	
-	
-	
+
+
+
+
+
+
 	/**
 	 * Install and uninstall functions
 	 *
 	 */
 
 	public function ___install() {
-		
+
 		$fields = wire('fields');
-		
+
 		// Tab stuff
-		
+
 		if(!$fields->get('seo_tab')) {
 			$field = new Field;
 			$field->type = $this->modules->get('FieldtypeFieldsetTabOpen');
@@ -771,10 +776,10 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			$field->tags = 'seo';
 			$field->save();
 		}
-		
-		
+
+
 		// title, keywords, description, image, canonical, robots, custom
-		
+
 		if(!$fields->get('seo_title')) {
 			$field = new Field;
 			$field->type = $this->modules->get("FieldtypeText");
@@ -784,8 +789,8 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			$field->tags = 'seo';
 			$field->save();
 		}
-		
-		
+
+
 		if(!$fields->get('seo_keywords')) {
 			$field = new Field;
 			$field->type = $this->modules->get("FieldtypeText");
@@ -795,8 +800,8 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			$field->tags = 'seo';
 			$field->save();
 		}
-		
-		
+
+
 		if(!$fields->get('seo_description')) {
 			$field = new Field;
 			$field->type = $this->modules->get("FieldtypeText");
@@ -806,7 +811,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			$field->tags = 'seo';
 			$field->save();
 		}
-		
+
 
 		if(!$fields->get('seo_image')) {
 			$field = new Field;
@@ -817,8 +822,8 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			$field->tags = 'seo';
 			$field->save();
 		}
-		
-		
+
+
 		if(!$fields->get('seo_canonical')) {
 			$field = new Field;
 			$field->type = $this->modules->get("FieldtypeText");
@@ -828,8 +833,8 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			$field->tags = 'seo';
 			$field->save();
 		}
-		
-		
+
+
 		if(!$fields->get('seo_custom')) {
 			$field = new Field;
 			$field->type = $this->modules->get("FieldtypeTextarea");
@@ -843,12 +848,12 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 
 
 	}
-	
-	
+
+
 	public function ___uninstall() {
 		$fields = wire('fields');
 		$templates = wire('templates');
-		
+
 		foreach(self::getDefaultFields() as $field) {
 			foreach($templates as $template) {
 				if(!$template->hasField($field)) continue;
@@ -857,6 +862,6 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			}
 			$fields->delete($fields->get($field));
 		}
-		
+
 	}
 }
