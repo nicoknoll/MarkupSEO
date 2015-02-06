@@ -242,7 +242,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			}
 
 			if($configData['canonicalProtocol'] == 'https') {
-				$pageData['canonical'] = preg_replace('%^http%Uis', 'https', $page->httpUrl);
+				$pageData['canonical'] = preg_replace('%^https?%i', 'https', $page->httpUrl);
 			} else {
 				$pageData['canonical'] = $page->httpUrl;
 			}
