@@ -12,7 +12,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	public static function getModuleInfo() {
 		return array(
 			'title' => __('SEO'),
-			'version' => '0.8.0',
+			'version' => '0.8.1',
 			'summary' => __('The all-in-one SEO solution for ProcessWire.'),
 			'autoload' => true,
 			'requires' => array('ProcessWire>=2.4.0', 'PHP>=5.3.8')
@@ -36,7 +36,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			'descriptionSmart' 	=> '', 
 			'image' 				=> '', 
 			'imageSmart' 		=> '',
-			'titleFormat' 		=> '{title} - {sitename}', 
+			'titleFormat' 		=> '', 
 			'canonical' 			=> '', 
 			'canonicalProtocol' => 'auto',
 			'robots' 			=> '', 
@@ -51,6 +51,8 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			'includeTemplates' 	=> array(),
 			'usePermission' 		=> 0,
 			'googleAnalytics' 	=> '',
+			'piwikAnalyticsUrl' 	=> '',
+			'piwikAnalyticsIDSite' => '',
 			'hardLimit'			=> 0,
 			'titleLimit'			=> '60',
 			'descriptionLimit'	=> '160'
@@ -196,21 +198,21 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 						if($configData['title']) {
 							$pageData['title'] = $configData['title'];
 						} elseif($configData['titleSmart'] && $page->get(implode('|', $configData['titleSmart'])) != '') {
-							$pageData['title'] = $page->get(implode('|', $configData['titleSmart']));
+							$pageData['title'] = strip_tags($page->get(implode('|', $configData['titleSmart'])));
 						}
 					break;
 					case 'keywords': 
 						if($configData['keywords']) {
 							$pageData['keywords'] = $configData['keywords'];
 						} elseif($configData['keywordsSmart'] && $page->get(implode('|', $configData['keywordsSmart'])) != '') {
-							$pageData['keywords'] = $page->get(implode('|', $configData['keywordsSmart']));
+							$pageData['keywords'] = strip_tags($page->get(implode('|', $configData['keywordsSmart'])));
 						}
 					break;
 					case 'description': 
 						if($configData['description']) {
 							$pageData['description'] = $configData['description'];
 						} elseif($configData['descriptionSmart'] && $page->get(implode('|', $configData['descriptionSmart'])) != '') {
-							$pageData['description'] = $page->get(implode('|', $configData['descriptionSmart']));
+							$pageData['description'] = strip_tags($page->get(implode('|', $configData['descriptionSmart'])));
 						}
 					break;
 					case 'image': 
@@ -304,6 +306,22 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			</script>
 			<!-- End: Google Analytics -->';
 		}
+		
+		$piwikAnalytics = '';
+		if($configData['piwikAnalyticsUrl']) {			
+			$piwikAnalytics = '<!-- Piwik -->
+			<script type="text/javascript">
+				var _paq = _paq || [];
+				(function(){ var u=(("https:" == document.location.protocol) ? "https://'.$configData['piwikAnalyticsUrl'].'/" : "http://'.$configData['piwikAnalyticsUrl'].'/");
+				_paq.push([\'setSiteId\', '.$configData['piwikAnalyticsIDSite'].']);
+				_paq.push([\'setTrackerUrl\', u+\'piwik.php\']);
+				_paq.push([\'trackPageView\']);
+				_paq.push([\'enableLinkTracking\']);
+				var d=document, g=d.createElement(\'script\'), s=d.getElementsByTagName(\'script\')[0]; g.type=\'text/javascript\'; g.defer=true; g.async=true; g.src=u+\'piwik.js\';
+				s.parentNode.insertBefore(g,s); })();
+			</script>
+			<!-- End Piwik Code -->';
+		}
 
 
 		// add "render"
@@ -320,8 +338,9 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			$rendered .= '<meta name="'.$name.'" content="'.$content.'">'.PHP_EOL;
 		}
 
-		// replace whitespaces
+		// replace whitespaces and add analytics code
 		$rendered .= preg_replace('/^\s+|\s+$/m', '', $googleAnalytics).PHP_EOL;
+		$rendered .= preg_replace('/^\s+|\s+$/m', '', $piwikAnalytics).PHP_EOL;
 
 		if($this->addWhitespace) {
 			$renderedTmp = '';
@@ -732,6 +751,24 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->description = __("Google Analytics code will be embedded if this field is populated.");
 		$field->notes = __('How to find your code: https://support.google.com/analytics/answer/1008080. It should look like: UA-XXXXXXX-X.');
 		$field->value = $data['googleAnalytics'];
+		$field->columnWidth = '50%';
+		$fieldset->add($field);
+		
+		$field = $modules->get("InputfieldText");
+		$field->name = "piwikAnalytics";
+		$field->label = __("Piwik Analytics URL");
+		$field->description = __("Piwik code will be embedded if both Piwik fields are populated.");
+		$field->value = $data['piwikAnalyticsUrl'];
+		$field->notes = __('Url without http:// or https://');
+		$field->columnWidth = '25%';
+		$fieldset->add($field);
+		
+		$field = $modules->get("InputfieldText");
+		$field->name = "piwikAnalytics";
+		$field->label = __("Piwik Analytics IDSite");
+		$field->description = __("Piwik code will be embedded if both Piwik fields are populated.");
+		$field->value = $data['piwikAnalyticsIDSite'];
+		$field->columnWidth = '25%';
 		$fieldset->add($field);
 
 
