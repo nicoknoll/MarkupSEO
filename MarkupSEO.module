@@ -12,7 +12,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	public static function getModuleInfo() {
 		return array(
 			'title' => __('SEO'),
-			'version' => '0.8.1',
+			'version' => '0.8.2',
 			'summary' => __('The all-in-one SEO solution for ProcessWire.'),
 			'autoload' => true,
 			'requires' => array('ProcessWire>=2.4.0', 'PHP>=5.3.8')
@@ -755,7 +755,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$fieldset->add($field);
 		
 		$field = $modules->get("InputfieldText");
-		$field->name = "piwikAnalytics";
+		$field->name = "piwikAnalyticsUrl";
 		$field->label = __("Piwik Analytics URL");
 		$field->description = __("Piwik code will be embedded if both Piwik fields are populated.");
 		$field->value = $data['piwikAnalyticsUrl'];
@@ -764,7 +764,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$fieldset->add($field);
 		
 		$field = $modules->get("InputfieldText");
-		$field->name = "piwikAnalytics";
+		$field->name = "piwikAnalyticsIDSite";
 		$field->label = __("Piwik Analytics IDSite");
 		$field->description = __("Piwik code will be embedded if both Piwik fields are populated.");
 		$field->value = $data['piwikAnalyticsIDSite'];
