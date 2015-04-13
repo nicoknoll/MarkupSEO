@@ -66,6 +66,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			'seo_keywords',
 			'seo_description',
 			'seo_image',
+			'seo_robots',
 			'seo_custom',
 			'seo_canonical',
 			'seo_tab_END'
@@ -242,7 +243,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		if($configData['author']) $pageData['author'] = $configData['author'];
 
 		// add robots
-		if($configData['robots']) $pageData['robots'] = implode(', ', $configData['robots']);
+		if($configData['robots'] && empty($pageData['robots'])) $pageData['robots'] = implode(', ', $configData['robots']);
 
 		// add opengraph and canonical
 		if(!$pageData['canonical']) {
@@ -402,7 +403,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	public function hookFrontendConfig(HookEvent $event) {
 		$moduleData = wire('modules')->getModuleConfigData($this);
 		$moduleData['custom'] = (array)$this->parseCustom($moduleData['custom']);
-		$moduleData['robots'] = implode(', ', $moduleData['robots']);
+		$moduleData['robots'] = is_array($moduleData['robots']) ? implode(', ', $moduleData['robots']) : $moduleData['robots'];
 
 		$moduleData = array_merge($moduleData, $moduleData['custom']);
 
@@ -984,7 +985,16 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			$field->save();
 		}
 
-
+		if(!$fields->get('seo_robots')) {
+			$field = new Field;
+			$field->type = wire('modules')->get("FieldtypeText");
+			$field->name = "seo_robots";
+			$field->label = $this->_("Robots");
+			$field->description = $this->_("The robots settings will tell search engine which data they are allowed to include/index.");
+			$field->notes = $this->_('This overwrites the module\'s global setting for this page.');
+			$field->tags = 'seo';
+			$field->save();
+		}
 	}
 
 
