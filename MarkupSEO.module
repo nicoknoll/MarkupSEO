@@ -97,9 +97,11 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		// backend hooks (Fix by @peterfoeng)
 		if(@$this->page->process == 'ProcessPageEdit') {
 			$editedPage = wire('pages')->get($this->config->input->get->id);
-
-			if(in_array($editedPage->template->name, $this->includeTemplates)) {
-				$this->addHookAfter("ProcessPageEdit::buildFormContent", $this, 'hookCustomizeSeoTab');
+			
+			if(!($editedPage instanceof NullPage)) {
+				if(in_array($editedPage->template->name, $this->includeTemplates)) {
+					$this->addHookAfter("ProcessPageEdit::buildFormContent", $this, 'hookCustomizeSeoTab');
+				}
 			}
 		}
 
@@ -158,7 +160,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 					.SEO_google_wrapper{float:left;width:512px;margin:10px 0;}
 					.SEO_google_title{color:#1a0dab;clear:both;width:auto;float:left;font-family:arial,sans-serif;font-size:16px;}
 					.SEO_google_title:hover{text-decoration:underline;cursor:pointer;}
-					.SEO_google_link{height:17px;line-height:16px;color:#006621;font-style:normal;font-size:13px;clear:both;float:left;font-family:arial,sans-serif;}
+					.SEO_google_link{height:17px;line-height:16px;color:#006621;font-style:normal;font-size:13px;clear:both;float:left;font-family:arial,sans-serif;overflow: hidden;width: 100%;text-overflow: ellipsis;}
 					.SEO_google_description{line-height:16px;color:#545454;font-style:normal;font-size:13px;clear:both;float:left;font-family:arial,sans-serif;}
 					</style>';
 
