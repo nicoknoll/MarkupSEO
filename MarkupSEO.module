@@ -604,7 +604,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->name = "imageSmart";
 		$field->label = __("Smart Image");
 		$field->description = __("We will use the first image from the specified image field.");
-		foreach($fields->find('type=FieldtypeImage') as $selectField) $field->addOption($selectField->name);
+		foreach($fields->find('type=FieldtypeImage|FieldtypeImageFocusArea') as $selectField) $field->addOption($selectField->name);
 		$field->value = $data['imageSmart'];
 		$field->columnWidth = '50%';
 		$field->showIf = 'useParents=0';
