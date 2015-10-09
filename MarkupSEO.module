@@ -131,6 +131,15 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$page = wire('pages')->get($this->config->input->get->id);
 		$configData = wire('modules')->getModuleConfigData($this);
 
+		$titleField = (empty($configData['useParents']) or $configData['useParents'] == true) ? array('seo_title') : $configData['titleSmart'];
+		$title = '';
+		foreach ($titleField as $field) {
+			if (!empty($page->$field)) {
+				$title = $page->$field;
+				break;
+			}
+		}
+
 		if(!$e->return->get('seo_tab')) return;
 
 		// Add google preview
@@ -140,7 +149,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->value = 	$this->javascriptCounter($configData['hardLimit'], $configData['titleLimit'], $configData['descriptionLimit']).
 										$this->javascriptAutocomplete().
 										$this->javascriptGooglePreview().
-										$this->getGooglePreview($page->seo_title, $page->seo_canonical, $page->seo_description); // add javascript, too
+										$this->getGooglePreview($title, $page->seo_canonical, $page->seo_description); // add javascript, too
 		$e->return->insertAfter($field, $e->return->get('seo_tab'));
 
 	}
@@ -862,13 +871,30 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		return '<script type="text/javascript">'.$code.'</script>';
 	}
 
-	static private function javascriptGooglePreview() {
+	private function javascriptGooglePreview() {
+		$configData = wire('modules')->getModuleConfigData($this);
+
+		$titleSmart = ($configData['useParents'] == true) ? array('seo_title') : $configData['titleSmart'];
+		$smartFieldFormat = function($fieldName) {
+			return "input[name={$fieldName}]";
+		};
+		$titleFieldsSelectors = implode(',',array_map($smartFieldFormat,$titleSmart));
+		$titleFieldsNames = "'" . implode('\',\'',$titleSmart) ."'";
+
 		$code = "
 		$(document).ready(function(){
 
-			$('#Inputfield_seo_title').keyup(function(){
-				$('.SEO_google_title').html(((\$(this).val()) ? \$(this).val() : 'Title'));
-			}); 
+			$('{$titleFieldsSelectors},input[name=seo_title]').keyup(function(){
+				$.each([$titleFieldsNames],function(index, name) {
+					value = $('input[name='+ name +']').val();
+					if (value != '') {
+						$('.SEO_google_title').html(value);
+						return false;
+					} else if (index == ($(this).length - 1)) {
+						$('.SEO_google_title').html('".__('Title')."');
+					}
+				});
+			});
 
 			$('#Inputfield_seo_description').keyup(function(){
 				$('.SEO_google_description').html(((\$(this).val()) ? \$(this).val() : 'This is just a short description.'));
