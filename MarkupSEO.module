@@ -90,7 +90,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	 */
 	 public function init() {
 		 // frontend hooks
-		 $this->addHookAfter("ProcessPageView::execute", $this, 'hookMethodAuto');
+		 $this->addHookAfter("Page::render", $this, 'hookMethodAuto');
 	 }
 
 	public function ready() {
