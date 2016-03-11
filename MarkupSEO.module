@@ -12,7 +12,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	public static function getModuleInfo() {
 		return array(
 			'title' => __('SEO'),
-			'version' => '0.8.3',
+			'version' => '0.8.4',
 			'summary' => __('The all-in-one SEO solution for ProcessWire.'),
 			'autoload' => true,
 			'requires' => array('ProcessWire>=2.4.0', 'PHP>=5.3.8')
@@ -329,15 +329,22 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		// add "render"
 		$rendered = '';
 		foreach($pageData as $name => $content) {
-			if($name == 'custom') { 
-				continue; 
+
+			switch($name) {
+				case 'custom':
+					break;
+				case 'title':
+					if($this->titleFormat == '') break;
+					$rendered .= '<title>'.$this->parseTitle($page, $content).'</title>'.PHP_EOL; 
+					break;
+				case 'canonical':
+					$rendered .= '<link rel="canonical" href="'.$content.'" />'.PHP_EOL;
+					break;
+				default:
+					$rendered .= '<meta name="'.$name.'" content="'.$content.'" />'.PHP_EOL;
+					break;
 			}
-			if($name == 'title') {
-				if($this->titleFormat == '') continue;
-				$rendered .= '<title>'.$this->parseTitle($page, $content).'</title>'.PHP_EOL; 
-				continue;
-			}
-			$rendered .= '<meta name="'.$name.'" content="'.$content.'">'.PHP_EOL;
+
 		}
 
 		// replace whitespaces and add analytics code
