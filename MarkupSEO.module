@@ -304,6 +304,12 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		 		})(window,document,\'script\',\'//www.google-analytics.com/analytics.js\',\'ga\');
 
 				ga(\'create\', \''.$configData['googleAnalytics'].'\', \'auto\');
+			';
+			// Add "anonymizeIp" option if activated
+			if( $configData['googleAnalyticsAnonymizeIP'] ) {
+				$googleAnalytics .= 'ga(\'set\', \'anonymizeIp\', true)';
+			}
+			$googleAnalytics .= ';
 				ga(\'send\', \'pageview\');
 
 			</script>
@@ -754,6 +760,12 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->columnWidth = '50%';
 		$fieldset->add($field);
 
+
+		$fieldset = $modules->get("InputfieldFieldset");
+		$fieldset->label = "Tracking";
+		$fieldset->collapsed = Inputfield::collapsedNo;
+		$form->add($fieldset);
+
 		// Analytics code
 		$field = $modules->get("InputfieldText");
 		$field->name = "googleAnalytics";
@@ -763,6 +775,16 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->value = $data['googleAnalytics'];
 		$field->columnWidth = '50%';
 		$fieldset->add($field);
+
+		// Anonymize IP
+		$field = $modules->get("InputfieldCheckbox");
+		$field->name = "googleAnalyticsAnonymizeIP";
+		$field->label = __("Google Analytics: Anonymize IPs?");
+		$field->description = __('In some countrys (like Germany) anonymizing the visitors IP in Google Analytics is an obligatory setting for legal reasons.');
+		$field->checked = $data['googleAnalyticsAnonymizeIP'];
+		$field->columnWidth = '50%';
+		$fieldset->add($field);
+
 		
 		$field = $modules->get("InputfieldText");
 		$field->name = "piwikAnalyticsUrl";
@@ -770,7 +792,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->description = __("Piwik code will be embedded if both Piwik fields are populated.");
 		$field->value = $data['piwikAnalyticsUrl'];
 		$field->notes = __('Url without http:// or https://');
-		$field->columnWidth = '25%';
+		$field->columnWidth = '50%';
 		$fieldset->add($field);
 		
 		$field = $modules->get("InputfieldText");
@@ -778,9 +800,14 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->label = __("Piwik Analytics IDSite");
 		$field->description = __("Piwik code will be embedded if both Piwik fields are populated.");
 		$field->value = $data['piwikAnalyticsIDSite'];
-		$field->columnWidth = '25%';
+		$field->columnWidth = '50%';
 		$fieldset->add($field);
 
+
+		$fieldset = $modules->get("InputfieldFieldset");
+		$fieldset->label = "More...";
+		$fieldset->collapsed = Inputfield::collapsedNo;
+		$form->add($fieldset);
 
 		$field = $modules->get("InputfieldMarkup");
 		$field->label = __("Multilanguage");
