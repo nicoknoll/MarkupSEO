@@ -196,6 +196,19 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		// get config seo data
 		$configData = wire('modules')->getModuleConfigData($this);
 
+		// override styles for multisite module, if it's installed
+		if ($multiSite = $this->modules->getModule('Multisite', array('noPermissionCheck' => true, 'noInit' => true))) {
+			if ($this->config->MultisiteDomains && array_key_exists($multiSite->domain, $this->config->MultisiteDomains) && array_key_exists('markupSEO', $this->config->MultisiteDomains[$multiSite->domain])) {
+				$configDataOverrides = $this->config->MultisiteDomains[$multiSite->domain]['markupSEO']; // get special site data
+				$configData = array_merge($configData, $configDataOverrides); // merge module config data with config data for special site
+
+				// override data in module scope, otherwise the one from module settings will be used
+				foreach(self::getDefaultConfig() as $key => $value) {
+					if (array_key_exists($key, $configData)) $this->$key = $configData[$key];
+				}
+			}
+		}
+
 		foreach($pageData as $fieldKey => $fieldValue) {
 			// if the field has content we can continue
 			if($fieldValue != '') continue;
