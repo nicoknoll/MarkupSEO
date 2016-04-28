@@ -221,24 +221,24 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 				// use smart data or default data
 				switch($fieldKey) {
 					case 'title': 
-						if($configData['title']) {
-							$pageData['title'] = $configData['title'];
-						} elseif($configData['titleSmart'] && $page->get(implode('|', $configData['titleSmart'])) != '') {
+						if($configData['titleSmart'] && $page->get(implode('|', $configData['titleSmart'])) != '') {
+							$pageData['title'] = strip_tags($page->get(implode('|', $configData['titleSmart'])));
+						}elseif($configData['titleSmart'] && $page->get(implode('|', $configData['titleSmart'])) != '') {
 							$pageData['title'] = strip_tags($page->get(implode('|', $configData['titleSmart'])));
 						}
 					break;
 					case 'keywords': 
-						if($configData['keywords']) {
-							$pageData['keywords'] = $configData['keywords'];
-						} elseif($configData['keywordsSmart'] && $page->get(implode('|', $configData['keywordsSmart'])) != '') {
+						if($configData['keywordsSmart'] && $page->get(implode('|', $configData['keywordsSmart'])) != '') {
 							$pageData['keywords'] = strip_tags($page->get(implode('|', $configData['keywordsSmart'])));
+						} elseif($configData['keywords']) {
+							$pageData['keywords'] = $configData['keywords'];
 						}
 					break;
 					case 'description': 
-						if($configData['description']) {
-							$pageData['description'] = $configData['description'];
-						} elseif($configData['descriptionSmart'] && $page->get(implode('|', $configData['descriptionSmart'])) != '') {
+						if($configData['descriptionSmart'] && $page->get(implode('|', $configData['descriptionSmart'])) != '') {
 							$pageData['description'] = strip_tags($page->get(implode('|', $configData['descriptionSmart'])));
+						} elseif($configData['description']) {
+							$pageData['description'] = $configData['description'];
 						}
 					break;
 					case 'image': 
