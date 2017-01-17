@@ -366,6 +366,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 					break;
 				case 'title':
 					if($this->titleFormat == '') break;
+					if ($content === '') $content = $page->title;
 					$rendered .= '<title>'.$this->parseTitle($page, $content).'</title>'.PHP_EOL; 
 					break;
 				case 'canonical':
