@@ -1,4 +1,4 @@
-<?php
+<?php namespace ProcessWire;
 /**
  * MarkupSEO
  * The all-in-one SEO solution for ProcessWire.
@@ -12,10 +12,10 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	public static function getModuleInfo() {
 		return array(
 			'title' => __('SEO'),
-			'version' => '0.8.7',
-			'summary' => __('The all-in-one SEO solution for ProcessWire.'),
+			'version' => '0.8.9',
+			'summary' => __('The all-in-one SEO solution for ProcessWire. (Steffens fork)'),
 			'autoload' => true,
-			'requires' => array('ProcessWire>=2.4.0', 'PHP>=5.3.8')
+			'requires' => array('ProcessWire>=3.0.0', 'PHP>=5.3.8')
 		);
 	}
 
@@ -110,8 +110,8 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 
 		// frontend hooks
 		if($this->page->template != 'admin' && in_array($this->page->template->name, $this->includeTemplates)) {
-			$this->addHookProperty("Page::seo", $this, 'hookFrontendPage');
-			$this->addHookProperty("Config::seo", $this, 'hookFrontendConfig');
+			$this->wire('page')->addHookProperty("seo", $this, 'hookFrontendPage');
+			$this->wire('config')->addHookProperty("seo", $this, 'hookFrontendConfig');
 		}
 	}
 
@@ -366,6 +366,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 					break;
 				case 'title':
 					if($this->titleFormat == '') break;
+					if ($content === '') $content = $page->title;
 					$rendered .= '<title>'.$this->parseTitle($page, $content).'</title>'.PHP_EOL; 
 					break;
 				case 'canonical':
