@@ -165,8 +165,8 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$page = wire('pages')->get($this->config->input->get->id);
 
 		$html  = '<div class="SEO_google_wrapper"><span class="SEO_google_title">'.($title ? $title : 'Title').'</span>';
-		$html .= '<span class="SEO_google_link">'.($url ? $url : $page->httpUrl).'</span>';
-		$html .= '<span class="SEO_google_description">'.($description ? substr($description, 0, 155) : 'This is just a short description.').'.</span></div>';
+		$html .= '<span class="SEO_google_link">'.($url ? $url : $page->url(true)).'</span>';
+		$html .= '<span class="SEO_google_description">'.($description ? substr($description, 0, 155) : 'This is just a short description.').'</span></div>';
 		$html .= '<style>
 					.SEO_google_wrapper{float:left;width:512px;margin:10px 0;}
 					.SEO_google_title{color:#1a0dab;clear:both;width:auto;float:left;font-family:arial,sans-serif;font-size:16px;}
@@ -278,9 +278,9 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			}
 
 			if($configData['canonicalProtocol'] == 'https') {
-				$pageData['canonical'] = preg_replace('%^https?%i', 'https', $page->httpUrl);
+				$pageData['canonical'] = preg_replace('%^https?%i', 'https', $page->url(true));
 			} else {
-				$pageData['canonical'] = $page->httpUrl;
+				$pageData['canonical'] = $page->url(true);
 			}
 
 		}
@@ -952,11 +952,11 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 
 			$('#Inputfield_seo_description').keyup(function(){
 				$('.SEO_google_description').html(((\$(this).val()) ? \$(this).val() : 'This is just a short description.'));
-			}); 
+			});
 
 			$('#Inputfield_seo_canonical').keyup(function(){
-				$('.SEO_google_link').html(((\$(this).val()) ? \$(this).val() : '".wire('pages')->get(wire('input')->get->id)->httpUrl."'));
-			}); 
+				$('.SEO_google_link').html(((\$(this).val()) ? \$(this).val() : '".wire('pages')->get(wire('input')->get->id)->url(true)."'));
+			});
 
 		});
 		";
