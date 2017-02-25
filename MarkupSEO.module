@@ -225,7 +225,11 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 							$pageData['title'] = $configData['title'];
 						} elseif($configData['titleSmart'] && $page->get(implode('|', $configData['titleSmart'])) != '') {
 							$pageData['title'] = strip_tags($page->get(implode('|', $configData['titleSmart'])));
+							if($configData['hardLimit']){
+							  $pageData['title'] = substr($pageData['title'],0,$configData['titleLimit']);
+							}
 						}
+						$pageData['title'] = htmlentities($pageData['title']);						
 					break;
 					case 'keywords': 
 						if($configData['keywords']) {
@@ -239,7 +243,11 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 							$pageData['description'] = $configData['description'];
 						} elseif($configData['descriptionSmart'] && $page->get(implode('|', $configData['descriptionSmart'])) != '') {
 							$pageData['description'] = strip_tags($page->get(implode('|', $configData['descriptionSmart'])));
+							if($configData['hardLimit']){
+							  $pageData['description'] = substr($pageData['description'],0,$configData['descriptionLimit']);
+							}
 						}
+						$pageData['description'] = htmlentities($pageData['description']);					
 					break;
 					case 'image': 
 						if($configData['imageSmart'] && count($page->get(implode('|', $configData['imageSmart']))) > 0) {
