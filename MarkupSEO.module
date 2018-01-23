@@ -372,6 +372,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 					$rendered .= '<link rel="canonical" href="'.$content.'" />'.PHP_EOL;
 					break;
 				default:
+					if ($content == '') break;
 					if (strstr($name, 'og:')) {
 						$rendered .= '<meta property="'.$name.'" content="'.$content.'" />'.PHP_EOL;
 					} else {
