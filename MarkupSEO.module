@@ -12,7 +12,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	public static function getModuleInfo() {
 		return array(
 			'title' => __('SEO'),
-			'version' => '0.8.7',
+			'version' => '0.8.8',
 			'summary' => __('The all-in-one SEO solution for ProcessWire.'),
 			'autoload' => true,
 			'requires' => array('ProcessWire>=2.4.0', 'PHP>=5.3.8')
@@ -51,6 +51,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			'includeTemplates' 	=> array(),
 			'usePermission' 		=> 0,
 			'googleAnalytics' 	=> '',
+			'googleAnalyticsAdvertisingFeatures' => false,
 			'googleAnalyticsAnonymizeIP' => false,
 			'piwikAnalyticsUrl' 	=> '',
 			'piwikAnalyticsIDSite' => '',
@@ -326,18 +327,24 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 				(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
 				m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
 		 		})(window,document,\'script\',\'//www.google-analytics.com/analytics.js\',\'ga\');
-
 				ga(\'create\', \''.$configData['googleAnalytics'].'\', \'auto\');
 			';
+
+			// The display features plugin for analytics.js can be used to enable Advertising Features in Google Analytics, such as Remarketing, Demographics and Interest Reporting, and more.
+			if( $configData['googleAnalyticsAdvertisingFeatures'] ) {
+				$googleAnalytics .= '
+					ga(\'require\', \'displayfeatures\');
+					ga(\'require\', \'linkid\', \'linkid.js\');'."\n";
+			}
+
 			// Add "anonymizeIp" option if activated
 			if( $configData['googleAnalyticsAnonymizeIP'] ) {
-				$googleAnalytics .= 'ga(\'set\', \'anonymizeIp\', true)';
+				$googleAnalytics .= 'ga(\'set\', \'anonymizeIp\', true);'."\n";
 			}
-			$googleAnalytics .= ';
-				ga(\'send\', \'pageview\');
-
+			
+			$googleAnalytics .= 'ga(\'send\', \'pageview\');
 			</script>
-			<!-- End: Google Analytics -->';
+			<!-- End: Google Analytics -->'."\n";
 		}
 		
 		$piwikAnalytics = '';
@@ -801,7 +808,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->description = __("Google Analytics code will be embedded if this field is populated.");
 		$field->notes = __('How to find your code: https://support.google.com/analytics/answer/1008080. It should look like: UA-XXXXXXX-X.');
 		$field->value = $data['googleAnalytics'];
-		$field->columnWidth = '50%';
+		$field->columnWidth = '34%';
 		$fieldset->add($field);
 
 		// Anonymize IP
@@ -810,7 +817,16 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->label = __("Google Analytics: Anonymize IPs?");
 		$field->description = __('In some countrys (like Germany) anonymizing the visitors IP in Google Analytics is an obligatory setting for legal reasons.');
 		$field->checked = $data['googleAnalyticsAnonymizeIP'];
-		$field->columnWidth = '50%';
+		$field->columnWidth = '33%';
+		$fieldset->add($field);
+
+		// Advertising Features
+		$field = $modules->get("InputfieldCheckbox");
+		$field->name = "googleAnalyticsAdvertisingFeatures";
+		$field->label = __("Google Analytics: Advertising Features?");
+		$field->description = __('The display features plugin for analytics.js can be used to enable Advertising Features in Google Analytics, such as Remarketing, Demographics and Interest Reporting, and more.');
+		$field->checked = $data['googleAnalyticsAdvertisingFeatures'];
+		$field->columnWidth = '33%';
 		$fieldset->add($field);
 
 		
