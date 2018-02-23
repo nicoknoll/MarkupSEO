@@ -426,7 +426,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	private function parseCustom($custom) {
 		if(trim($custom) == '') return;
 
-		$return = '';
+		$return = array();
 		$lines = explode(PHP_EOL, $custom);
 		foreach($lines as $line) {
 			list($key, $value) = explode(':=', $line);
