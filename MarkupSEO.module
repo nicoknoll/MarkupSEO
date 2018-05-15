@@ -12,7 +12,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	public static function getModuleInfo() {
 		return array(
 			'title' => __('SEO'),
-			'version' => '0.8.7',
+			'version' => '0.8.8',
 			'summary' => __('The all-in-one SEO solution for ProcessWire.'),
 			'autoload' => true,
 			'requires' => array('ProcessWire>=2.4.0', 'PHP>=5.3.8')
@@ -26,20 +26,20 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	 */
 	static public function getDefaultConfig() {
 		return array(
-			'sitename' 			=> '', 
-			'author' 			=> '', 
-			'title' 				=> '', 
-			'titleSmart' 		=> 'title', 
-			'keywords' 			=> '', 
-			'keywordsSmart' 		=> '', 
-			'description' 		=> '', 
-			'descriptionSmart' 	=> '', 
-			'image' 				=> '', 
+			'sitename' 			=> '',
+			'author' 			=> '',
+			'title' 				=> '',
+			'titleSmart' 		=> 'title',
+			'keywords' 			=> '',
+			'keywordsSmart' 		=> '',
+			'description' 		=> '',
+			'descriptionSmart' 	=> '',
+			'image' 				=> '',
 			'imageSmart' 		=> '',
-			'titleFormat' 		=> '', 
-			'canonical' 			=> '', 
+			'titleFormat' 		=> '',
+			'canonical' 			=> '',
 			'canonicalProtocol' => 'auto',
-			'robots' 			=> '', 
+			'robots' 			=> '',
 			'custom' 			=> '',
 			'includeGenerator' 	=> 1,
 			'includeOpenGraph' 	=> 1,
@@ -52,6 +52,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			'usePermission' 		=> 0,
 			'googleAnalytics' 	=> '',
 			'googleAnalyticsAnonymizeIP' => false,
+            'googleAnalyticsForceSSL' => false,
 			'piwikAnalyticsUrl' 	=> '',
 			'piwikAnalyticsIDSite' => '',
 			'hardLimit'			=> 0,
@@ -99,7 +100,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		// backend hooks (Fix by @peterfoeng)
 		if(@$this->page->process == 'ProcessPageEdit') {
 			$editedPage = wire('pages')->get($this->config->input->get->id);
-			
+
 			if(!($editedPage instanceof NullPage)) {
 				if(in_array($editedPage->template->name, $this->includeTemplates)) {
 					$this->addHookAfter("ProcessPageEdit::buildFormContent", $this, 'hookCustomizeSeoTab');
@@ -125,7 +126,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 
 		// inject rendered meta tags into page
 		$dataRendered = $this->page->seo->render;
-		$event->return = str_ireplace("</head>", $dataRendered.'</head>', $event->return); 
+		$event->return = str_ireplace("</head>", $dataRendered.'</head>', $event->return);
 	}
 
 
@@ -220,28 +221,28 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			} else {
 				// use smart data or default data
 				switch($fieldKey) {
-					case 'title': 
+					case 'title':
 						if($configData['title']) {
 							$pageData['title'] = $configData['title'];
 						} elseif($configData['titleSmart'] && $page->get(implode('|', $configData['titleSmart'])) != '') {
 							$pageData['title'] = strip_tags($page->get(implode('|', $configData['titleSmart'])));
 						}
 					break;
-					case 'keywords': 
+					case 'keywords':
 						if($configData['keywords']) {
 							$pageData['keywords'] = $configData['keywords'];
 						} elseif($configData['keywordsSmart'] && $page->get(implode('|', $configData['keywordsSmart'])) != '') {
 							$pageData['keywords'] = strip_tags($page->get(implode('|', $configData['keywordsSmart'])));
 						}
 					break;
-					case 'description': 
+					case 'description':
 						if($configData['description']) {
 							$pageData['description'] = $configData['description'];
 						} elseif($configData['descriptionSmart'] && $page->get(implode('|', $configData['descriptionSmart'])) != '') {
 							$pageData['description'] = strip_tags($page->get(implode('|', $configData['descriptionSmart'])));
 						}
 					break;
-					case 'image': 
+					case 'image':
 						if($configData['imageSmart'] && count($page->get(implode('|', $configData['imageSmart']))) > 0) {
 							$imageFields = $page->get(implode('|', $configData['imageSmart']));
 							try {
@@ -293,7 +294,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			$pageData['og:description'] = $pageData['description'];
 			$pageData['og:type'] = 'website'; // TODO: Add more options
 			$pageData['og:image'] = $pageData['image'];
-		}	
+		}
 
 		// add twitter
 		if($configData['includeTwitter']) {
@@ -303,7 +304,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			$pageData['twitter:url'] = $pageData['canonical'];
 			$pageData['twitter:description'] = $pageData['description'];
 			$pageData['twitter:image'] = $pageData['image'];
-		}		
+		}
 
 
 		//add custom
@@ -313,7 +314,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$pageData['custom'] = array_merge($configData['custom'], $pageData['custom']);
 
 		foreach($pageData['custom'] as $key => $value) {
-			$pageData[$key] = $value; 
+			$pageData[$key] = $value;
 		}
 
 		// add google analytics
@@ -331,17 +332,21 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			';
 			// Add "anonymizeIp" option if activated
 			if( $configData['googleAnalyticsAnonymizeIP'] ) {
-				$googleAnalytics .= 'ga(\'set\', \'anonymizeIp\', true)';
+				$googleAnalytics .= 'ga(\'set\', \'anonymizeIp\', true);';
 			}
-			$googleAnalytics .= ';
+            // Add "forceSSL" option if activated
+            if( $configData['googleAnalyticsForceSSL'] ) {
+                $googleAnalytics .= 'ga(\'set\', \'forceSSL\', true);';
+            }
+			$googleAnalytics .= '
 				ga(\'send\', \'pageview\');
 
 			</script>
 			<!-- End: Google Analytics -->';
 		}
-		
+
 		$piwikAnalytics = '';
-		if($configData['piwikAnalyticsUrl']) {			
+		if($configData['piwikAnalyticsUrl']) {
 			$piwikAnalytics = '<!-- Piwik -->
 			<script type="text/javascript">
 				var _paq = _paq || [];
@@ -366,7 +371,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 					break;
 				case 'title':
 					if($this->titleFormat == '') break;
-					$rendered .= '<title>'.$this->parseTitle($page, $content).'</title>'.PHP_EOL; 
+					$rendered .= '<title>'.$this->parseTitle($page, $content).'</title>'.PHP_EOL;
 					break;
 				case 'canonical':
 					$rendered .= '<link rel="canonical" href="'.$content.'" />'.PHP_EOL;
@@ -390,7 +395,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 			$renderedTmp = '';
 			foreach(explode(PHP_EOL, $rendered) as $line) {
 				$renderedTmp .= "\t".$line.PHP_EOL;
-			}				
+			}
 			$rendered = $renderedTmp;
 		}
 
@@ -430,7 +435,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$lines = explode(PHP_EOL, $custom);
 		foreach($lines as $line) {
 			list($key, $value) = explode(':=', $line);
-			$key = preg_replace('%[^A-Za-z0-9\-\.\:\_]+%', '', str_replace(' ', '-', trim($key)));	
+			$key = preg_replace('%[^A-Za-z0-9\-\.\:\_]+%', '', str_replace(' ', '-', trim($key)));
 			$value = trim(wire('sanitizer')->text(html_entity_decode($value)));
 			$return[$key] = $value;
 		}
@@ -507,9 +512,9 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 						}
 						$template->fields->save();
 					}
-				} else {			
+				} else {
 					if($template->hasField('seo_tab')) {
-						// remove seo fields						
+						// remove seo fields
 						foreach($template->fields as $templateField) {
 							if(in_array($templateField->name, self::getDefaultFields())) {
 								$template->fields->remove($templateField);
@@ -810,10 +815,18 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->label = __("Google Analytics: Anonymize IPs?");
 		$field->description = __('In some countrys (like Germany) anonymizing the visitors IP in Google Analytics is an obligatory setting for legal reasons.');
 		$field->checked = $data['googleAnalyticsAnonymizeIP'];
-		$field->columnWidth = '50%';
+		$field->columnWidth = '25%';
 		$fieldset->add($field);
 
-		
+        // ForceSSL
+        $field = $modules->get("InputfieldCheckbox");
+        $field->name = "googleAnalyticsForceSSL";
+        $field->label = __("Google Analytics: Force SSL?");
+        $field->description = __('Force Google Analytics to use SSL?');
+        $field->checked = $data['googleAnalyticsForceSSL'];
+        $field->columnWidth = '25%';
+        $fieldset->add($field);
+
 		$field = $modules->get("InputfieldText");
 		$field->name = "piwikAnalyticsUrl";
 		$field->label = __("Piwik Analytics URL");
@@ -822,7 +835,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->notes = __('Url without http:// or https://');
 		$field->columnWidth = '50%';
 		$fieldset->add($field);
-		
+
 		$field = $modules->get("InputfieldText");
 		$field->name = "piwikAnalyticsIDSite";
 		$field->label = __("Piwik Analytics IDSite");
@@ -865,7 +878,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 		$field->label = __("Support development");
 		$string = __('This is and stays a free, open-source module. If you like it and want to support its development you can use this button:');
 		$field->value = '<p>'.$string.'</p>
-					<a target="_blank" href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=8RTGCB7NCWE2J"><img src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" alt="PayPal - The safer, easier way to pay online!"></a>'; 
+					<a target="_blank" href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=8RTGCB7NCWE2J"><img src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" alt="PayPal - The safer, easier way to pay online!"></a>';
 
 		$fieldset->add($field);
 
