@@ -242,7 +242,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 						}
 					break;
 					case 'image': 
-						if($configData['imageSmart'] && count($page->get(implode('|', $configData['imageSmart']))) > 0) {
+						if($configData['imageSmart'] && !empty($page->get(implode('|', $configData['imageSmart'])))) {
 							$imageFields = $page->get(implode('|', $configData['imageSmart']));
 							try {
 								$pageData['image'] = $page->get(implode('|', $configData['imageSmart']))->first()->httpUrl;
