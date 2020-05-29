@@ -12,7 +12,7 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 	public static function getModuleInfo() {
 		return array(
 			'title' => __('SEO'),
-			'version' => '0.8.8',
+			'version' => '0.8.9',
 			'summary' => __('The all-in-one SEO solution for ProcessWire.'),
 			'autoload' => true,
 			'requires' => array('ProcessWire>=2.4.0', 'PHP>=5.3.8')
@@ -274,18 +274,34 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 
 		// add opengraph and canonical
 		if(!$pageData['canonical']) {
+
 			if($configData['canonicalProtocol'] == 'auto') {
 				if(wire('config')->https == true) $configData['canonicalProtocol'] = 'https';
 			}
 
+			foreach(wire('languages') as $language) {
+				if(!$page->viewable($language)) continue;
+				$hreflang = $language->name; 
+				if ($hreflang != "default") $urlLanguague[$hreflang] = $page->localHttpUrl($language); 
+			}
+
 			if($configData['canonicalProtocol'] == 'https') {
 				$pageData['canonical'] = preg_replace('%^https?%i', 'https', $page->httpUrl);
+				if (!empty($urlLanguague)) {
+					foreach($urlLanguague as $key => $urlLang) {
+						$pageData['hreflang'][$key] = preg_replace('%^https?%i', 'https', $urlLang);
+					}
+				}
 			} else {
 				$pageData['canonical'] = $page->httpUrl;
+				if (!empty($urlLanguague)) {
+					foreach($urlLanguague as $key => $urlLang) {
+						$pageData['hreflang'][$key] = $urlLang;
+					}
+				}
 			}
 
 		}
-
 
 		if($configData['includeOpenGraph']) {
 			$pageData['og:site_name'] = $configData['sitename'];
@@ -377,6 +393,13 @@ class MarkupSEO extends WireData implements Module, ConfigurableModule {
 					break;
 				case 'canonical':
 					$rendered .= '<link rel="canonical" href="'.$content.'" />'.PHP_EOL;
+					break;
+				case 'hreflang':
+					foreach($content as $hreflang => $url)
+					$rendered .= '<link rel="alternate" hreflang="'.$hreflang.'" href="'.$url.'" />'.PHP_EOL;
+					break;
+				case 'http-equiv':
+					$rendered .= '<meta http-equiv="refresh" content="'.$content.'" />'.PHP_EOL;
 					break;
 				default:
 					if (strstr($name, 'og:')) {
